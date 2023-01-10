@@ -23,6 +23,8 @@ See: http://www.flashstart.it/
 
 %build
 %{makedocs}
+%{__install} -d root%{perl_vendorlib}
+cp -av lib/perl/FlashStartHybrid root%{perl_vendorlib}
 perl createlinks
 for _nsdb in flashstart; do
    mkdir -p root/%{_nsdbconfdir}/${_nsdb}/{migrate,force,defaults}

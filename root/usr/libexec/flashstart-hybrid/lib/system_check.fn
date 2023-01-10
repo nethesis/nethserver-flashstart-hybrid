@@ -1,0 +1,76 @@
+#!/bin/sh
+
+# set var check
+INIT_FN_system_check=1
+#-------------------------------------------------------------
+# FLASHSTART HYBRID - SYSTEM CHECK UTILITY FUNCTIONS
+#-------------------------------------------------------------
+# Contains the functions for system_check procedure
+
+# GLOBAL VAR
+CHECK_TMP=$PATH_RAM_TEMP"fs_hybrid_system_check.tmp"
+	
+# FUNCTION
+fnsc_init_tmp_file() {
+	local PROC=$1
+
+	# create temp file
+	local FILE_TMP=$PATH_RAM_TEMP"fs_hybrid_system_check-$PROC.tmp"
+	
+	# reset file 
+	echo "" > $FILE_TMP
+	
+	# return file name
+	echo $FILE_TMP
+}
+
+fnsc_finalize_tmp_file() {
+	local PROC_FILE=$1
+	local OBJ=$2
+	local MODE=$3
+	
+	local OBJ_LIST=$(echo $OBJ | tr "," "\n")
+
+	for THIS_OBJ in $OBJ_LIST
+	do
+		# prepare file
+		if [ "$MODE" == "array" ]; then
+			fn_api_prepare_file_data $PROC_FILE "$THIS_OBJ"
+		else
+			fn_api_prepare_file_data_object "$THIS_OBJ" $PROC_FILE
+		fi
+	done
+	
+	# add comma
+	echo "," >> $PROC_FILE
+	
+	# put to master file
+	cat $PROC_FILE >> $CHECK_TMP
+}
+
+fnsc_check_procedure() {
+	# get procedure
+	local PROC_NAME=$1
+
+	# create exclude list
+	local PROCEDURE_EXCLUDE=";software_update_post;"
+	
+	# get procedure list
+	PRECURE_ARRAY=$(ls $PATH_SRC)
+	PRECURE_LIST=","$(fn_join , ${PRECURE_ARRAY[@]})","
+	
+	local CHECK=0
+	
+	# check not in list
+	if [[ "$PRECURE_LIST" =~ .*",$PROC_NAME,".* ]]; then
+		CHECK=1
+	fi
+	
+	# check if is excluded
+	if [[ "$PROCEDURE_EXCLUDE" =~ .*";$PROC_NAME;".* ]]; then
+		CHECK=0
+	fi
+	
+	echo $CHECK
+}
+

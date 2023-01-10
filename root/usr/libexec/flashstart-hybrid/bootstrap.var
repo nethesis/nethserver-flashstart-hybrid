@@ -1,0 +1,117 @@
+#!/bin/sh
+
+#-------------------------------------------------------------
+# BOOT VAR
+#-------------------------------------------------------------
+# set path
+__DIR__=/usr/libexec/flashstart-hybrid		# script directory
+PATH_CONFS=$__DIR__/confs
+PATH_LIB=$__DIR__/lib
+PATH_SRC=$__DIR__/src
+PATH_TEMPLATE=$__DIR__/template
+
+PATH_LOG=/var/log/
+NAME_FILE_LOG=flashstart-hybrid.log
+
+#-------------------------------------------------------------
+# GLOBAL VAR
+#-------------------------------------------------------------
+# system configuration dir
+SYS_CONFS_DIR=/etc/flashstart-hybrid
+
+# set path this script
+SCRIPT_FS=$__DIR__/fs_hybrid
+
+SERVICE_FS=flashstart-hybrid
+
+# set path service log file
+SERVICE_LOG_FILE=$PATH_LOG$NAME_FILE_LOG
+PROCEDURE_LOG_DIR=$PATH_LOG"flashstart-hybrid-proc/"
+
+# set profile confs file
+IPSET_DNS_FILE=$SYS_CONFS_DIR"/ipset_dns.conf"
+
+# set auth data file
+AUTH_DATA_FILE=$SYS_CONFS_DIR"/auth.conf"
+
+
+#-------------------------------------------------------------
+# TEMP FILE
+#-------------------------------------------------------------
+PATH_RAM_TEMP=/dev/shm/
+API_AUTH_STATUS=$PATH_RAM_TEMP/fs_hybrid_api_auth_status
+SOFTWARE_VERSION_STATUS=$PATH_RAM_TEMP/fs_hybrid_software_version_status
+RELOAD_QUEUE_TIMING=$PATH_RAM_TEMP/fs_hybrid_reload_queue_timing
+
+#-------------------------------------------------------------
+# SYSTEM VAR
+#-------------------------------------------------------------
+# path 
+IFCONFIG=/sbin/ifconfig
+IPSET=/usr/sbin/ipset
+PERL=/usr/bin/perl
+SERVICE=/usr/sbin/service
+SYSTEMCTL=/usr/bin/systemctl
+MD5SUM=/usr/bin/md5sum
+CP=/usr/bin/cp
+CMP=/usr/bin/cmp
+YUM="sudo /usr/bin/yum"
+RPM=/usr/bin/rpm 
+RM=/usr/bin/rm
+
+SHOREWALL=/usr/sbin/shorewall
+
+#-------------------------------------------------------------
+# E-SMITH VAR
+#-------------------------------------------------------------
+SIGNAL_EVENT=/usr/sbin/e-smith/signal-event 
+ESMITH_CONFIG=/sbin/e-smith/config
+
+ESMITH_ACTIONS=/etc/e-smith/events/actions
+
+ESMITH_ACTIONS_FS_AUTH=/etc/e-smith/events/actions/nethserver-flashstart-auth-ip
+
+#-------------------------------------------------------------
+# UPDATE VAR
+#-------------------------------------------------------------
+UPDATE_WORK_DIR=/tmp
+UPDATE_DIR_NAME=update
+
+#-------------------------------------------------------------
+# DNS SERVICE VAR
+#-------------------------------------------------------------
+DNSSRV_LOG_DIR=/var/log/
+NAME_DNSSRV_LOG_FILE=dnsmasq.log
+DNSSRV_LOG_FILE=$DNSSRV_LOG_DIR/$NAME_DNSSRV_LOG_FILE
+
+
+#-------------------------------------------------------------
+# TIMESTAMP VAR
+#-------------------------------------------------------------
+SCRIPT_DAY=`date +%Y-%m-%d`
+SCRIPT_TIME=`date +%H:%M:%S`
+SCRIPT_TIMESTAMP=$SCRIPT_DAY" "$SCRIPT_TIME
+SCRIPT_DAY_YESTERDAY=`date +%Y-%m-%d --date="1 days ago"`
+SCRIPT_DAY_TOMORROW=`date +%Y-%m-%d --date="-1 days ago"`
+SCRIPT_TS_FILE=$(date +%Y%m%d)$(date +%H%M%S)
+
+#-------------------------------------------------------------
+# INCLUDE CONFIGURATION FILE
+#-------------------------------------------------------------
+source $PATH_CONFS/service.conf
+source $PATH_CONFS/queue_timing.conf
+source $PATH_CONFS/software.conf
+# check overwrite configuration -> if exists file -> inlcude overwrite configuration
+FS_DEV=0;if [ -f $__DIR__/test_overwrite.conf ]; then source $__DIR__/test_overwrite.conf; FS_DEV=1; fi
+
+#-------------------------------------------------------------
+# INCLUDE FUNCTION FILE
+#-------------------------------------------------------------
+source $PATH_LIB/service.fn
+
+
+#-------------------------------------------------------------
+# EXECUTE FUNCTION
+#-------------------------------------------------------------
+# get auth data
+fn_get_auth_data

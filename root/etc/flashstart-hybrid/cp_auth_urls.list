@@ -1,0 +1,12 @@
+# Auth Url list
+#domain;url;
+ 
+captive.apple.com;/hotspot-detect.html;
+edge-http.microsoft.com;/captiveportal/generate_204;
+edge-http.microsoft.com;/captiveportal;
+detectportal.firefox.com;/canonical.html;
+www.gstatic.com;/generate_204;
+connectivitycheck.gstatic.com;/generate_204;
+connectivitycheck.gstatic.com;/kindle-wifi/wifistub.html;
+spectrum.s3.amazonaws.com;/kindle-wifi/wifistub.html;
+conn-service-eu-04.allawnos.com;/generate204;

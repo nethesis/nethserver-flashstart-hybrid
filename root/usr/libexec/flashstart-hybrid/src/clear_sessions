@@ -1,0 +1,82 @@
+#!/bin/sh
+
+#-------------------------------------------------------------
+# FLASHSTART HYBRID  - clear_sessions SCRIPTS
+#-------------------------------------------------------------
+# check call_jobs inlcude defined in fs_hybrid
+if [ "$INIT_SRC_INCLUDE" != "1" ]; then echo "call %SCRIPT_DIR%/%SCRIPT_FS% clear_sessions"; exit; fi
+
+exit;
+# check auth data
+if [ "$AUTH_EMAIL" == "" ]; then fn_log "$CALL_PROC" "Service Not Configured"; exit; fi
+
+# include function by function
+fn_include_func_file dns_utility
+
+# call API
+CALL_SESSION=$(fn_call_api "$API_VERSION/sessions/active" "$AUTH_EMAIL" "GET" "*") 
+
+# check result
+if [[ "$CALL_SESSION" == "$API_RESPONSE_MESSAGE_ERROR"* ]]; then
+  # log error
+  fn_log "$CALL_PROC" "$LOG_LABEL_ERROR $CALL_SESSION"
+  
+  # clear log file
+  fn_clear_log
+  
+else
+	# set count split
+	SPLIT_FIELD=";"
+	
+	# count line
+	COUNT_SESSION_ALL=$(echo "${CALL_SESSION}" | awk -F"${SPLIT_FIELD}" '{print NF-1}')
+	# get line number
+	COUNT_SESSION=$(echo $((COUNT_SESSION_ALL / 2)))
+	
+	# Log session count
+	fn_log "$CALL_PROC" "$LOG_LABEL_INFO SESSION: $COUNT_SESSION"
+		
+	# get dns list ip
+	FILE_DNSSRV_IP=$(cat $DNSSRV_LOG_FILE | grep query | cut -d ' ' -f 8 | sort | uniq )
+	
+	# clear log file
+	fn_clear_log
+	
+	# set into string
+	DNSSRV_IP=$(fn_join , ${FILE_DNSSRV_IP[@]})
+	
+	# get online session list
+	for line in $CALL_SESSION; do
+		# replace space 
+		line_check=$(echo "$line" | sed -e 's/&#32;/ /g') 
+		# get data
+		SESS_USER=$(echo "$line_check" | cut -d ';' -f 1)
+		SESS_IP=$(echo "$line_check" | cut -d ';' -f 2)
+		
+		# if exists username and password
+		if [ "$SESS_USER" != "" -a "$SESS_IP" != "" ]; then	
+		
+			# check if ip is in dns list ip
+			if [[ "$SESS_IP" =~ $(echo ^\($(echo "$DNSSRV_IP" | tr ',' '|')\)$) ]]; then			
+				
+				echo "$SESS_IP > IS CONNECTED"
+				#fn_log "$CALL_PROC" "$LOG_LABEL_INFO SESSION: $SESS_IP > IS CONNECTED"
+				# nothing to do
+				
+			else
+			# EXECUTE LOGOUT
+
+				# log
+				fn_log "$CALL_PROC" "$LOG_LABEL_INFO CALL_LOGOUT: $SESS_USER $SESS_IP"
+				
+				# set formatted data
+				SEND_DATA="{\"code\":\"LOGOUT\", \"user\":\"$SESS_USER\", \"ip\": \"$SESS_IP\"}"
+							
+				# call API for logout
+				CALL_EVENT=$(fn_call_api "$API_VERSION/sync/event" "$AUTH_EMAIL" "POST" "$SEND_DATA")
+			fi
+			
+		fi
+	done
+	
+fi

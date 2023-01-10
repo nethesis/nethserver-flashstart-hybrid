@@ -1,0 +1,16 @@
+# CAPTIVE PORTAL CONFIGURATION
+ 
+enable=1
+domain=local.fsflt.net
+logout_domain=logout.me
+redirect_login=https://google.it
+redirect_logout=http://local.fsflt.net
+redirect_countdown=2
+profile=CAPTIVEPORTAL
+lo_id=999
+lo_ip=127.0.0.254
+auth_type=google
+session_timeout=never
+login_message="<div class=\"alert alert-info\" role=\"alert\"> <h4 class=\"alert-heading\">Ricorda:</h4> <p>Vai su <b>logout.me</b> per effettuare il logout. Puoi aggiungerlo ai preferiti <a class=\"alert-link\" id=\"bookmarkme\" href=\"#\" rel=\"sidebar\" title=\"bookmark this page\"> da qui.</a></p> </div>"
+login_success="<div class=\"alert alert-success\" role=\"alert\"> <h4 class=\"alert-heading\">Login avvenuto con successo!</h4> </div>"
+logged_message="<div class=\"alert alert-success\" role=\"alert\"> <h4 class=\"alert-heading\">Sei già loggato!</h4> <p>Puoi usare <b>logout.me</b> per effettuare il logout. Puoi aggiungerlo ai preferiti <a class=\"alert-link\" id=\"bookmarkme\" href=\"#\" rel=\"sidebar\" title=\"bookmark this page\"> da qui.</a></p> </div>"

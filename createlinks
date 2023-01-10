@@ -37,6 +37,7 @@ event_templates($event, qw(
       /etc/squid/squid.conf
       /etc/cron.d/flashstart-auth-ip
       /etc/unbound/conf.d/flashstart.conf
+      /etc/cron.d/flashstart-hybrid
 ));
 
 event_services($event, qw(
@@ -51,6 +52,7 @@ event_services($event, qw(
 $event = 'nethserver-flashstart-hybrid-save';
 
 event_actions($event, qw(
+      flashstarthybrid-init 40
       firewall-adjust 60
       nethserver-flashstart-auth-ip 70
 ));
@@ -94,4 +96,52 @@ event_actions($event, qw(
 
 event_services($event, qw(
       unbound restart
+));
+
+# 
+# flashstarthybrid-dns-update
+#
+
+$event = 'flashstarthybrid-dns-update'
+
+event_templates($event, qw(
+      /etc/dnsmasq-0.conf
+      /etc/dnsmasq-1.conf
+      /etc/dnsmasq-2.conf
+      /etc/dnsmasq-3.conf
+      /etc/dnsmasq-4.conf
+));
+
+event_actions($event, qw(
+      firewall-adjust 30
+));
+
+event_services($event, qw(
+      dnsmasq@0 restart
+      dnsmasq@1 restart
+      dnsmasq@2 restart
+      dnsmasq@3 restart
+      dnsmasq@4 restart
+));
+
+# 
+# flashstarthybrid-zone-update
+#
+
+$event = 'flashstarthybrid-zone-update'
+
+event_templates($event, qw(
+      /etc/dnsmasq-0.conf
+      /etc/dnsmasq-1.conf
+      /etc/dnsmasq-2.conf
+      /etc/dnsmasq-3.conf
+      /etc/dnsmasq-4.conf
+));
+
+event_services($event, qw(
+      dnsmasq@0 restart
+      dnsmasq@1 restart
+      dnsmasq@2 restart
+      dnsmasq@3 restart
+      dnsmasq@4 restart
 ));

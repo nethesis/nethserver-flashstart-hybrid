@@ -1,0 +1,46 @@
+#!/bin/sh
+
+#-------------------------------------------------------------
+# FLASHSTART HYBRID  - zone SCRIPTS
+#-------------------------------------------------------------
+# check call_jobs inlcude defined in fs_hybrid
+if [ "$INIT_SRC_INCLUDE" != "1" ]; then echo "call %SCRIPT_DIR%/%SCRIPT_FS% zone"; exit; fi
+
+# get data
+ACTION=$2				# action to be execute [ ADD / DEL ]
+ZONE=$3					# zone name
+IP=$4					# zone ip
+RELOAD=$5				# request reload [ 0 (or empty) = not reload | 1 = reload ]
+
+
+if [ "$ACTION" != "" -a "$ZONE" != "" -a "$IP" != "" ]; then
+	# convert name lowercase
+	ZONE=$(echo "$ZONE" | tr '[:upper:]' '[:lower:]')
+	
+	# init 
+	CHANGED=0
+	
+	# call replace 
+	CHECK_CHANGED=$($PERL -e 'use FlashStartHybrid::ServiceDNS; my $changed = FlashStartHybrid::ServiceDNS::write_zone_list("'$ACTION'", "'$ZONE'", "'$IP'"); print $changed;')
+	
+	if [ "$CHECK_CHANGED" = "1" ]; then
+		# set var
+		CHANGED=1
+		# Log
+		fn_log "$CALL_PROC" "$LOG_LABEL_INFO $ACTION: $ZONE $IP"
+	else
+		# Log not changed
+		fn_log "$CALL_PROC" "$LOG_LABEL_INFO $ACTION: $ZONE $IP [not found]"
+	fi
+	
+	
+	# check reload
+	if [ "$RELOAD" = "1" ]; then
+		if [ "$CHANGED" = "1" ]; then
+			# call function
+			fn_zone_reload
+		fi
+	else 
+		echo $CHANGED
+	fi	
+fi

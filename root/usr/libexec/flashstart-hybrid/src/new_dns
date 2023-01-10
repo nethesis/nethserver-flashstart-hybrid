@@ -1,0 +1,69 @@
+#!/bin/sh
+
+#-------------------------------------------------------------
+# FLASHSTART HYBRID  - new_dns SCRIPTS
+#-------------------------------------------------------------
+# check call_jobs inlcude defined in fs_hybrid
+if [ "$INIT_SRC_INCLUDE" != "1" ]; then echo "call %SCRIPT_DIR%/%SCRIPT_FS% new_dns"; exit; fi
+
+# get data
+INIT_MODE=$2			# action to be execute [ <empty> / write_only ]
+
+# call API
+CLOUD_DNS=$(fn_call_api "$API_VERSION/device/dns" "$AUTH_EMAIL" "GET" "*")
+
+if [[ "$CLOUD_DNS" == "$API_RESPONSE_MESSAGE_ERROR"* ]]; then
+  # log error
+  fn_log "$CALL_PROC" "$LOG_LABEL_ERROR $CLOUD_DNS"
+  
+else 
+	# init
+	RELOAD=0
+	
+	# check and restore original template if is empty
+	CHECK_IS_EMPTY=$($PERL -e 'use FlashStartHybrid::IpsetDNS; my $t = FlashStartHybrid::IpsetDNS::check_restore_empty_file(); print "$t";')
+	
+	# check DNS
+	for line in $CLOUD_DNS; do 
+	
+		# remove new line char
+		THIS_LINE=$(echo "${line}" | sed -e 's/^[ \t]*//')
+		DNS1=$(echo "$THIS_LINE" | cut -d ';' -f 1)
+		DNS2=$(echo "$THIS_LINE" | cut -d ';' -f 2)
+		PROFILE_CODE=$(echo "$THIS_LINE" | cut -d ';' -f 3)
+		CATCH_ALL=$(echo "$THIS_LINE" | cut -d ';' -f 4)
+		
+		# call per function
+		CHANGED=$($PERL -e 'use FlashStartHybrid::IpsetDNS; my $t = FlashStartHybrid::IpsetDNS::new_dns("'$DNS1'", "'$DNS2'", "'$PROFILE_CODE'", "'$CATCH_ALL'"); print "$t";')
+		
+		# log
+		if [ "$CHANGED" = "1" ]; then
+			# set reload
+			RELOAD=1
+			# log
+			fn_log "$CALL_PROC" "$LOG_LABEL_INFO DNS: $DNS1 $DNS2 $PROFILE_CODE [changed]"
+			
+		else 
+			# log
+			fn_log "$CALL_PROC" "$LOG_LABEL_INFO DNS: $DNS1 $DNS2 $PROFILE_CODE [not changed]"			
+		fi
+
+	done 
+	
+	
+	# if reload requested
+	if [ "$RELOAD" = "1" -a "$INIT_MODE" != "write_only" ]; then
+		# call event
+		$SIGNAL_EVENT flashstarthybrid-dns-init
+		
+		# log
+		fn_log "$CALL_PROC" "$LOG_LABEL_INFO signal-event flashstarthybrid-dns-init"
+		
+		# call job init 
+		$SCRIPT_FS init_jobs
+		
+	elif [ "$INIT_MODE" = "write_only" ]; then
+		echo $RELOAD
+	fi
+	
+fi

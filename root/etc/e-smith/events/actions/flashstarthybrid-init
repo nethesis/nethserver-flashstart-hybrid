@@ -1,0 +1,48 @@
+#!/bin/bash
+
+# include bootstrap for initialize global var
+source /usr/libexec/flashstart-hybrid/bootstrap.var
+
+# include function by function
+fn_include_func_file dns_utility
+
+# set log procedure
+LOG_PROC="ACTION flashstarthybrid-init"
+
+# get setname suffix
+SETNAME_LABEL=$($PERL -e 'use FlashStartHybrid::IpsetDNS; my $t = FlashStartHybrid::IpsetDNS::get_config("setname_label"); print "$t"; ')
+
+
+# clear ipset and session
+fn_clear_ipset_and_session "$LOG_PROC"
+
+# remove all set name
+for setname in $($IPSET list -name | grep $SETNAME_LABEL) ; do	
+	# flush
+	RESULT_IPSET=$($IPSET flush $setname 2>&1 >/dev/null)
+	if [ "$RESULT_IPSET" = "" ]; then RESULT_IPSET="executed"; fi
+	# Log
+	fn_log "$LOG_PROC" "$LOG_LABEL_INFO ipset flush $setname [$RESULT_IPSET]"
+	
+	# destroy
+	RESULT_IPSET=$($IPSET destroy $setname 2>&1 >/dev/null)
+	if [ "$RESULT_IPSET" = "" ]; then RESULT_IPSET="executed"; fi
+	# Log
+	fn_log "$LOG_PROC" "$LOG_LABEL_INFO ipset destroy $setname [$RESULT_IPSET]"
+done
+
+# get rule list from perl module
+for line in $($PERL -e 'use FlashStartHybrid::IpsetDNS; my @l = FlashStartHybrid::IpsetDNS->return_row(); foreach my $e (@l) { print "$e->{profile};$e->{loID};$e->{loIP}\n"; }') ; do 
+	
+	SETNAME=$(echo "$line" | cut -d ';' -f 1)
+	LOOPBACK_ID=$(echo "$line" | cut -d ';' -f 2)
+	LOOPBACK_IP=$(echo "$line" | cut -d ';' -f 3)
+
+	# add setname to ipset  
+	RESULT_IPSET=$($IPSET -N $SETNAME iphash 2>&1 >/dev/null)
+	if [ "$RESULT_IPSET" = "" ]; then RESULT_IPSET="executed"; fi
+	
+	# Log
+	fn_log "$LOG_PROC" "$LOG_LABEL_INFO ipset $SETNAME [$RESULT_IPSET]"
+	
+done

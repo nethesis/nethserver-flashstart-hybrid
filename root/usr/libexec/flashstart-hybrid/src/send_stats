@@ -1,0 +1,84 @@
+#!/bin/sh
+
+#-------------------------------------------------------------
+# FLASHSTART HYBRID  - send_stats SCRIPTS
+#-------------------------------------------------------------
+# check call_jobs inlcude defined in fs_hybrid
+if [ "$INIT_SRC_INCLUDE" != "1" ]; then echo "call %SCRIPT_DIR%/%SCRIPT_FS% send_stats"; exit; fi
+
+# check auth data
+if [ "$AUTH_EMAIL" == "" ]; then fn_log "$CALL_PROC" "Service Not Configured"; exit; fi
+
+#-------------------------------
+# GET DATA
+#-------------------------------
+# get stats
+SYSTEM_STATS=$($PERL -E 'use FlashStartHybrid::SystemStatus; my %data = FlashStartHybrid::SystemStatus::get_status(); print "$data{perc_cpu_used};$data{perc_disk_used};$data{perc_mem_used}";')
+
+# get value
+CPU_PERC=$(echo "$SYSTEM_STATS" | cut -d ';' -f 1)
+DISKSPACE_VAL=$(echo "$SYSTEM_STATS" | cut -d ';' -f 2)
+RAM_VAL=$(echo "$SYSTEM_STATS" | cut -d ';' -f 3)
+
+#-------------------------------
+# CREATE ARRAY STATS
+#-------------------------------
+# init array
+declare -A ARRAY_STATS
+
+# add cpu
+LEN_ARRAY=${#ARRAY_STATS[@]};
+ARRAY_STATS[$LEN_ARRAY]="cpu;"$CPU_PERC
+
+# add mem
+LEN_ARRAY=${#ARRAY_STATS[@]};
+ARRAY_STATS[$LEN_ARRAY]="ram;"$RAM_VAL
+
+# add disk
+LEN_ARRAY=${#ARRAY_STATS[@]};
+ARRAY_STATS[$LEN_ARRAY]="disk_space;"$DISKSPACE_VAL
+
+
+#-------------------------------
+# CREATE VAR DATA TO SEND
+#-------------------------------
+# init var
+SEND_DATA="["
+
+	for ((i=0; i <= $((${#ARRAY_STATS[@]} - 1)); ++i))
+		do
+			# get data
+			KEY=$i
+			CODE=$(echo "${ARRAY_STATS[$KEY]}" | cut -d ';' -f 1)
+			VALUE=$(echo "${ARRAY_STATS[$KEY]}" | cut -d ';' -f 2)
+			
+			# add separator
+			if [ "$KEY" != "0" ]; then 
+				# set data
+				SEND_DATA=$SEND_DATA","
+			fi
+			
+			# set data
+			SEND_DATA=$SEND_DATA"{\"name\":\""$CODE"\", \"value\":\""$VALUE"\"}"
+			
+	done
+
+# close data
+SEND_DATA=$SEND_DATA"]"
+
+#-------------------------------
+# SEND
+#-------------------------------
+# call API
+CALL_STATS=$(fn_call_api "$API_VERSION/device/stats" "$AUTH_EMAIL" "POST" "$SEND_DATA")
+
+# check result
+if [[ "$CALL_STATS" == "$API_RESPONSE_MESSAGE_ERROR"* ]]; then
+  # log error
+  fn_log "$CALL_PROC" "$LOG_LABEL_ERROR $CALL_STATS"
+else
+
+  # Log job count
+  fn_log "$CALL_PROC" "$LOG_LABEL_INFO SEND STATS"  
+  
+fi

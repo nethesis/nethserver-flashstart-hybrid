@@ -1,0 +1,604 @@
+#!/bin/sh
+
+# set var check
+INIT_FN_service=1
+#-------------------------------------------------------------
+# FLASHSTART HYBRID - SERVICE FUNCTIONS
+#-------------------------------------------------------------
+# Contains the global functions of the script
+
+fn_include_func_file() {
+# use this for chanck and include function file
+
+	# get var
+	local FUNCT_NAME=$1
+	
+	# check and include
+	if [ "$INIT_FN_"$FUNCT_NAME != "1" ]; then
+		# set file to be include
+		local FUNCT_INCLUDE=$FUNCT_NAME".fn"
+		# inclde
+		source $PATH_LIB/$FUNCT_INCLUDE
+	fi
+
+}
+
+fn_get_queue_timing() {
+# get timing for queue
+	
+	CUSTOM_QUEUE=$($PERL -e 'use FlashStartHybrid::QueueTiming; my @list = FlashStartHybrid::QueueTiming::get_config(); foreach my $elem (@list) { print "$elem->{shell_eval}\n"; }')
+
+	# for all queue
+	for shell_eval in "$CUSTOM_QUEUE"; do
+		
+		# set
+		eval $shell_eval
+		
+		log_shell_eval=$(echo "$shell_eval" | tr '\n' ';' | sed "s/;/ | /g")
+		
+		# Log
+		fn_log "FUNC fn_get_queue_timing" "$LOG_LABEL_INFO $log_shell_eval"
+	done
+}
+
+fn_return_queue_timing() {
+	local CODE=$1
+	
+	EVAL_CODE="local RETURN_TIME=\$DEFAULT_QTIME_"$CODE
+	eval $EVAL_CODE
+	
+	echo $RETURN_TIME
+}
+
+fn_return_queue_code() {
+	# return timing code from procedure
+	
+	local PROC_NAME=$1
+	
+	# init
+	local PROC_CODE=""
+	
+	for ((proc_i=0; proc_i <= $((${#ARRAY_QUEUE[@]} - 1)); ++proc_i))
+	do
+		KEY=$proc_i
+		THIS_PROC_NAME=$(echo "${ARRAY_QUEUE[$KEY]}" | cut -d ';' -f 1)
+		THIS_PROC_CODE=$(echo "${ARRAY_QUEUE[$KEY]}" | cut -d ';' -f 2)
+	
+		# check
+		if [ "$THIS_PROC_NAME" == "$PROC_NAME" ]; then
+			PROC_CODE=$THIS_PROC_CODE
+			break;
+		fi
+	done
+	
+	# response
+	echo $PROC_CODE
+}
+
+fn_check_reload_queue_timing() {
+	local RELOAD=0
+	# check if temp file exists
+	if [ -f $RELOAD_QUEUE_TIMING ]; then 
+		
+		# remove file
+		rm -f $RELOAD_QUEUE_TIMING
+		
+		RELOAD=1
+	fi
+	
+	echo $RELOAD
+}
+
+fn_rawurlencode() {
+# execute url encode
+
+  local string="${1}"
+  local strlen=${#string}
+  local encoded=""
+  local pos c o
+
+  for (( pos=0 ; pos<strlen ; pos++ )); do
+     c=${string:$pos:1}
+     case "$c" in
+        [-_.~a-zA-Z0-9] ) o="${c}" ;;
+        * )               printf -v o '%%%02x' "'$c"
+     esac
+     encoded+="${o}"
+  done
+  # return
+  echo "${encoded}"
+}
+
+fn_get_auth_data() {
+# get authentication data (for api and nic update)
+	
+	# init data
+	AUTH_EMAIL=""
+	AUTH_PASS=""
+	AUTH_PASS_MD5=""
+	
+	# get from flashstart configuration
+	RESULT_AUTH=$($ESMITH_CONFIG getjson flashstart)
+	local GET_USER=$(fn_json_parse "$RESULT_AUTH" "Username" 1)
+	local GET_PASS=$(fn_json_parse "$RESULT_AUTH" "Password")
+	local GET_STATUS=$(fn_json_parse "$RESULT_AUTH" "status" 1)
+	
+	# check result
+	if [ "$GET_USER" != "" -a "$GET_PASS" != "" -a "$GET_STATUS" = "enabled" ]; then 
+		
+		# set 
+		AUTH_EMAIL=$GET_USER
+		AUTH_PASS=$GET_PASS
+		AUTH_PASS_MD5="$(echo -n "$GET_PASS" | md5sum | cut -d ' ' -f 1 )"
+		
+	fi	
+}
+
+fn_background_service(){
+# start / stop background
+
+	# get var
+	local MODE=$1
+	
+	# check
+	if [ "$MODE" = "start" ]; then
+		$SYSTEMCTL start $SERVICE_FS
+	elif [ "$MODE" = "stop" ]; then
+		$SYSTEMCTL stop $SERVICE_FS
+	elif [ "$MODE" = "restart" ]; then
+		$SYSTEMCTL restart $SERVICE_FS
+	fi
+}
+
+fn_check_substring() {
+	local STR=$1
+	local SUB=$2
+	
+	local RESULT=0
+	
+	if [[ "$STR" == *"$SUB"* ]]; then
+		RESULT=1
+	fi
+	
+	echo $RESULT
+}
+
+# API
+#-------------------------
+function fn_call_api() {
+# call RESTful API
+
+  # get data
+  local API_NAME=$1                   # send api name (with version if is required)
+  local HEADER_VAR=$2                 # send var to add to header ( use * if nothing to add)
+  local SEND_METHOD=$3                # send method to use ( use * if use default)
+  local SEND_DATA=$4                  # send data to send ( use * if nothing)
+  local SEND_RESPONSE_TO_FILE=$5      # send file path if you wnat to put response to file
+  local SEND_CONTENT_TYPE=$6     	  # change content type
+
+  # declare all local variable
+  local API_URL; local API_PROTOCOL; local RESPONSE_TS; local METHOD; local DATA; local RESPONSE_TO_FILE;
+  local CALL_RESPONSE; local HTTP_STATUS; local ARRAY_RESPONSE; local ROW_RESPONSE;
+
+  # check protocol
+  API_PROTOCOL="http://"
+  API_PROTOCOL_OPT=""
+  if [ "$API_HTTPS" = "1" ]; then
+	# check https
+	if curl -s --head  --request GET "https://$API_BASEURL" -k | grep "200 OK" > /dev/null; then
+		API_PROTOCOL="https://"
+		API_PROTOCOL_OPT=" -k "
+	fi
+  fi
+
+  # set URL
+  API_URL=$API_PROTOCOL$API_BASEURL"/"$API_NAME
+  # log
+  fn_log "fn_call_api" "$API_URL"
+    # if to add var to header
+    if [ "$HEADER_VAR" != "" -a "$HEADER_VAR" != "*" ]; then API_URL=$API_URL"/"$HEADER_VAR; fi
+	
+  # check auth data
+  if [ "$AUTH_EMAIL" == "" ]; then AUTH_EMAIL="-"; fi
+  if [ "$AUTH_PASS_MD5" == "" ]; then AUTH_PASS_MD5="-"; fi
+  
+  # encode email
+  AUTH_EMAIL=$(fn_rawurlencode "$AUTH_EMAIL")
+  
+  # set auth
+  AUTH="$AUTH_EMAIL:$AUTH_PASS_MD5"
+  
+  # set ts var to send
+  RESPONSE_TS=$SCRIPT_TIMESTAMP
+
+  # set metod (default GET)
+  METHOD=$( if [ "$SEND_METHOD" != "" -a "$SEND_METHOD" != "*" ]; then echo "$SEND_METHOD"; else echo "GET"; fi );
+
+  # set data (default {} )
+  DATA="{}"
+  if [ "${SEND_DATA:0:5}" == "FILE@" ]; then 
+	# get file
+	FILE_DATA=$(echo "$SEND_DATA" | cut -d '@' -f2)
+	# send file data
+	DATA="@"$FILE_DATA
+	
+  elif [ "$SEND_DATA" != "" -a "$SEND_DATA" != "*" ]; then 
+	DATA="$SEND_DATA"
+	
+  fi
+  
+
+  # check response to file (default no file)
+  RESPONSE_TO_FILE=$( if [ "$SEND_RESPONSE_TO_FILE" != "" -a "$SEND_RESPONSE_TO_FILE" != "*" ]; then echo "$SEND_RESPONSE_TO_FILE"; else echo ""; fi );
+  
+  # check response content type
+  RESPONSE_CONTENT_TYPE=$( if [ "$SEND_CONTENT_TYPE" != "" -a "$SEND_CONTENT_TYPE" != "*" ]; then echo "$SEND_CONTENT_TYPE"; else echo "$API_RESPONSE_CONTENT_TYPE"; fi );
+
+  # call api
+  CALL_RESPONSE=$(curl $API_PROTOCOL_OPT -u "$AUTH" -X $METHOD --connect-timeout $API_CURL_TIMEOUT --silent --write-out "<HTTPSTATUS>:%{http_code}:</HTTPSTATUS>" $API_URL -H "accept: $RESPONSE_CONTENT_TYPE" -H "ts: $RESPONSE_TS" -H "Content-Type: $API_REQUEST_CONTENT_TYPE" -d "$DATA")
+
+  # get status
+  HTTP_STATUS=$(echo $CALL_RESPONSE | grep -Pzo '<HTTPSTATUS>:.*?:</HTTPSTATUS>' | cut -d ':' -f 2 )
+  
+  # init array response
+  ARRAY_RESPONSE=()
+
+  # check file to response
+  if [ "$RESPONSE_TO_FILE" != "" ]; then
+    # init file if not exists
+    if [ ! -f $RESPONSE_TO_FILE ];then touch $RESPONSE_TO_FILE; fi
+  fi
+
+  # set response
+  for ROW_RESPONSE in $CALL_RESPONSE; do
+    # if body row (not HTTPSTATUS)
+  	if [ "$ROW_RESPONSE" != "<HTTPSTATUS>:$HTTP_STATUS:</HTTPSTATUS>" ]; then
+      # if array response
+      if [ "$RESPONSE_TO_FILE" = "" ]; then
+        # put to line array
+        ARRAY_RESPONSE+=("$ROW_RESPONSE")
+      else
+        # put to file
+        echo "$ROW_RESPONSE" >> $RESPONSE_TO_FILE
+      fi
+  	fi
+  done
+  
+  # set message response
+  local MESSAGE_RESPONSE=$(fn_join " " ${ARRAY_RESPONSE[@]})
+  
+  # write to temp last auth status  
+  fn_api_auth_write_status "$HTTP_STATUS" "$MESSAGE_RESPONSE"
+  
+  # set response
+  if [ "$HTTP_STATUS" != "200" ]; then
+  # if error code
+    echo $API_RESPONSE_MESSAGE_ERROR"$HTTP_STATUS|$MESSAGE_RESPONSE"
+
+  elif [ "$RESPONSE_TO_FILE" != "" ]; then
+  # if not error but response to file
+    echo $API_RESPONSE_MESSAGE_INFO"$HTTP_STATUS|"
+
+  else
+  # if array response
+    echo ${ARRAY_RESPONSE[@]}
+  fi
+
+}
+
+fn_api_auth_write_status() {
+# write status to $API_AUTH_STATUS file
+
+	# get var
+	local STATUS=$1
+	local MESSAGE=$2
+	
+	# set message
+	MESSAGE=$(echo "$MESSAGE" | sed "s/;/ /g")
+	
+	# write	
+	if [ "$STATUS" = "200" ]; then
+		# status good
+		echo "$SCRIPT_TIMESTAMP;$API_TMP_LABEL_GOOD;" > $API_AUTH_STATUS
+	else
+		# check connection error
+		if [ "$STATUS" = "000" ]; then
+			MESSAGE=$(gettext "The connection to the server cannot be established")
+		fi
+		# write error
+		echo "$SCRIPT_TIMESTAMP;$API_TMP_LABEL_ERROR;$MESSAGE" > $API_AUTH_STATUS
+	fi
+}
+
+fn_api_auth_get_status() {
+# get status to $API_AUTH_STATUS file
+	
+	# get var
+	RETURN_MODE=$1
+	
+	# init var
+	local RESULT=""
+	local LAST_DATE=""
+	local LAST_STATUS=""
+	local LAST_MESSAGE=""
+
+	# execute if file not exists
+	if [ -f $API_AUTH_STATUS ]; then 	
+		# get content
+		RESULT=$(cat $API_AUTH_STATUS)
+		
+		# get var	
+		LAST_DATE=$(echo "$RESULT" | cut -d ";" -f 1)
+		LAST_STATUS=$(echo "$RESULT" | cut -d ";" -f 2)
+		LAST_MESSAGE=$(echo "$RESULT" | cut -d ";" -f 3)
+	fi
+	
+	# set result by mode
+	if [ "$RETURN_MODE" == "STATUS" ]; then
+		echo "$LAST_STATUS"
+	elif [ "$RETURN_MODE" == "DATE" ]; then
+		echo "$LAST_DATE"
+	elif [ "$RETURN_MODE" == "MESSAGE" ]; then
+		echo "$LAST_MESSAGE"
+	else
+		echo "$RESULT"
+	fi
+}
+
+fn_api_remove_status() {
+	# remove http status code	
+	echo "$1" | sed "s/<HTTPSTATUS>:200:<\/HTTPSTATUS>//g"
+}
+
+fn_api_check_response_data_error() {
+	local API_RESPONSE="$1"
+	local VALID_LABEL="$2"
+	
+	local CHECK_LABEL
+	local IS_ERROR=0
+	
+	CHECK_LABEL=$(echo "$API_RESPONSE" | grep "$VALID_LABEL" | wc -l)
+	
+	if [ "$CHECK_LABEL" = "0" ]; then
+		IS_ERROR=1
+	fi
+
+	echo $IS_ERROR
+}
+
+fn_api_prepare_file_data() {
+	# get file data
+	local PREPARE_FILE=$1
+	local OBJECT_NAME=$2
+	
+	# remove last char if is comma  
+	sed -i '$s/,$//' $PREPARE_FILE
+	
+	# add header and footer
+	if [ "$OBJECT_NAME" != "" ]; then
+		sed  -i '1i "'$OBJECT_NAME'": [' $PREPARE_FILE
+		echo "]" >> $PREPARE_FILE
+	else		
+		sed  -i '1i [' $PREPARE_FILE
+		echo "]" >> $PREPARE_FILE
+	fi
+}
+fn_api_prepare_file_data_object() {
+	# get file data
+	local OBJECT_NAME=$1
+	local PREPARE_FILE=$2
+	
+	# remove last char if is comma  
+	sed -i '$s/,$//' $PREPARE_FILE
+	
+	# add header and footer
+	if [ "$OBJECT_NAME" != "" ]; then
+		sed  -i '1i "'$OBJECT_NAME'": {' $PREPARE_FILE
+		echo "}" >> $PREPARE_FILE
+	else
+		sed  -i '1i {' $PREPARE_FILE
+		echo "}" >> $PREPARE_FILE
+	fi
+}
+
+# SOFTWARE
+fn_software_get_version() {
+	# get version by RPM
+	local THIS_VERSION=$($RPM -qi $FSSW_RPM_NAME | grep -m1 "Version" | cut -d ':' -f 2 | tr -d '\040\011\012\015')
+	# first time before RPM 
+	if [ "$THIS_VERSION" == "" ]; then THIS_VERSION=$FSSW_VERSION; fi
+	
+	echo "$THIS_VERSION"
+}
+fn_software_get_release() {
+	# get version by RPM
+	local THIS_RELEASE=$($RPM -qi $FSSW_RPM_NAME | grep -m1 "Release" | cut -d ':' -f 2 | tr -d '\040\011\012\015' | cut -d '.' -f 1)
+	# first time before RPM 
+	if [ "$THIS_RELEASE" == "" ]; then THIS_RELEASE="1"; fi
+	
+	echo "$THIS_RELEASE"
+}
+
+
+# DNS SERVICE
+#-------------------------
+fn_zone_reload() {
+	# reload template and reload 
+	$SIGNAL_EVENT flashstarthybrid-zone-update
+}
+
+# LOG
+#-------------------------
+fn_log() {
+  # get var
+  FUNC_LOG=$1
+  DATA_LOG=$2
+  SEND_FILE=$3
+
+  # set file log
+  FILE_LOG=$SERVICE_LOG_FILE
+  if [ "$SEND_FILE" != "" ]; then
+    FILE_LOG=$SEND_FILE
+  fi
+
+  # set timestamp
+  LOG_DAY=`date +%Y-%m-%d`
+  LOG_TIME=`date +%H:%M:%S`
+  TS=$LOG_DAY" "$LOG_TIME
+  # add to file
+  # es. 2019-08-09 10:54:25 match_clients :: AXUSS
+  echo "$TS $FUNC_LOG :: $DATA_LOG" >> $FILE_LOG
+  
+  # check is error
+  local CHECK_PROCEDURE=${FUNC_LOG:0:3}
+  local COUNT_ERROR_CHR=$(echo $LOG_LABEL_ERROR | awk '{print length}')  
+  local CHECK_ERROR=${DATA_LOG:0:$COUNT_ERROR_CHR}
+  # if is error
+  if [ "$CHECK_PROCEDURE" != "fn_" -a "$CHECK_ERROR" == "$LOG_LABEL_ERROR" ]; then
+	# check exists procedure log file, if exists save log
+	local PROC_LOG=$(fn_log_procedure_return_file "$FUNC_LOG")
+	if [ -f $PROC_LOG ]; then
+		echo "$TS $FUNC_LOG :: $DATA_LOG" >> $PROC_LOG".error"
+	fi
+  fi
+}
+
+fn_log_procedure_return_file() {
+	# get var
+	FUNC_LOG=$1
+	
+	echo "$PROCEDURE_LOG_DIR$FUNC_LOG"
+}
+
+fn_log_procedure_init() {
+	# get var
+	FUNC_LOG=$1
+	
+	local PROCEDURE_FILE=$(fn_log_procedure_return_file "$FUNC_LOG")
+	
+	if [ "$FUNC_LOG" != "" ]; then
+		rm -f $PROCEDURE_FILE	
+		touch $PROCEDURE_FILE
+	fi
+}
+
+# ARRAY
+#-------------------------
+function fn_join() {
+  # implodes the array into string
+  local IFS="$1"; shift; echo "$*";
+}
+
+function fn_array_check_key_exists(){
+# check key in sended array 
+
+  if [ "$2" != in ]; then
+    echo "Incorrect usage."
+    echo "Correct usage: exists {key} in {array}"
+    return
+  fi
+  # set result
+  if ! eval '[ ${'$3'[$1]+muahaha} ]'; then echo 0; else echo 1; fi 
+}
+
+function fn_json_parse() {
+	# parse JSON DATA (using for api response)
+	# es. fn_json_parse "{\"abc\":200,\"def\":100}" "abc"
+	
+	# get data
+	local JSON_STRING="$1"	
+	local RETURN_KEY=$2
+	local TRIM_RESULT=$3
+	
+	local PARSE_STRING
+	local PARSE_RESULT
+	
+	# convert
+	PARSE_STRING=`echo "$JSON_STRING" | sed 's/\\\\\//\//g' | sed 's/[{}]//g' | awk -v k="text" '{n=split($0,a,","); for (i=1; i<=n; i++) print a[i]}' | sed 's/\"\:\"/\|/g' | sed 's/[\,]/ /g' | sed 's/\"//g' | grep -w $RETURN_KEY`
+    
+	# get result
+	PARSE_RESULT=${PARSE_STRING##*|}
+	# remove key when not have "
+	PARSE_RESULT=$(echo "$PARSE_RESULT" | sed "s/"$RETURN_KEY"://g")
+	
+	# if trim 
+	if [ "$TRIM_RESULT" = "1" ]; then
+		PARSE_RESULT=$(echo $PARSE_RESULT | tr -d '\040\011\012\015')
+	fi
+	
+	# return
+	echo "$PARSE_RESULT"
+}
+
+function fn_json_create() {
+	# create json string from Array - format: ARRAY[0]="KEY=VAL"
+	
+	# get data
+	local MODE=$1
+	# ARRAY_JSON setted before call function and usetted after
+	
+	# init data
+	local json_data=""
+	
+	# start json
+	json_data=$json_data"{"
+	
+	# populate
+	for ((i=0; i <= $((${#ARRAY_JSON[@]} - 1)); ++i))
+	do
+		
+		# get data			
+		KEY=$(echo "${ARRAY_JSON[$i]}" | cut -d '=' -f 1)
+		VAL=$(echo "${ARRAY_JSON[$i]}" | cut -d '=' -f 2)
+				
+		# set key and var
+		if [ "$MODE" = "DB" ]; then 
+			# json for DB
+			
+			JSON_KEY="\""$KEY"\""
+			
+			# remove empty
+			if [ "$VAL" = "" ]; then 
+				JSON_VAL=""
+			else 
+				JSON_VAL=$VAL
+			fi
+			
+		else
+			# default API mode
+			
+			JSON_KEY=$KEY
+			JSON_VAL=$VAL			
+		fi
+		
+		# set separator
+		if [ "$i" != "0" ];then 
+			json_data=$json_data","
+		fi
+		# add 
+		json_data=$json_data""$JSON_KEY":"$JSON_VAL
+		
+	done
+	
+	# end json
+	json_data=$json_data"}"
+	
+	#
+	echo "$json_data"
+}
+
+function fn_json_trim() {
+	# remove carriage return an strip whitespace
+	
+	# get data
+	local STRING="$1"
+	
+	local RESULT=$(echo "$STRING" | tr -d '\r' | tr -d '\n' | tr -d ' ')
+	
+	echo "$RESULT"	
+}
+
+function fn_json_quote() {
+	QUOTE_JSON=$(echo "$1" | sed 's/\"/\\"/g')
+	echo "$QUOTE_JSON"
+}

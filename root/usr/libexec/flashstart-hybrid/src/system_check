@@ -1,0 +1,273 @@
+#!/bin/sh
+
+#-------------------------------------------------------------
+# FLASHSTART HYBRID  - system_check SCRIPTS
+#-------------------------------------------------------------
+# check procedure include defined in fs_hybrid
+if [ "$INIT_SRC_INCLUDE" != "1" ]; then echo "call %SCRIPT_DIR%/%SCRIPT_FS% system_check"; exit; fi
+
+# check unique process
+CURRENT_PID=$(echo $$)
+CHECK_PROC="$SCRIPT_FS $CALL_PROC"
+COUNT_PROC=$(pgrep -f "$CHECK_PROC" | grep -v $CURRENT_PID | wc -l)
+if [ $COUNT_PROC -gt 1 ]; then
+	# log error
+	fn_log "$CALL_PROC" "($CURRENT_PID) $LOG_LABEL_ERROR Another procedure in progress"
+	exit
+fi
+
+# include function by function
+fn_include_func_file system_check
+
+# get data
+WHO=$2				# stat to be send [ empty = all | comma separated list, values in: STATISTICS,PROCEDURES,ACTIVE_DEVICES,ACTIVE_SESSIONS ]
+
+# crete temp file
+CHECK_TMP=$PATH_RAM_TEMP"fs_hybrid_system_check.tmp"
+
+# reset file 
+echo "" > $CHECK_TMP
+
+# init
+SEND_TO_API=0
+IPSET_IP_LIST=""
+
+#-------------------------------
+# GET STATISTICS
+#-------------------------------
+if [ "$WHO" == "" -o $(fn_check_substring $WHO "STATISTICS") == "1" ]; then
+	# init temp file
+	STAT_TMP=$(fnsc_init_tmp_file statistics)
+
+	# get software version
+	MY_VERSION=$(fn_software_get_version)
+	
+	# get catch-all profile code
+	CATCH_ALL_CODE=$($PERL -E 'use FlashStartHybrid::IpsetDNS; my $catch_all_data = FlashStartHybrid::IpsetDNS::get_catch_all_data(); print $catch_all_data->{profile_code};')
+
+	# set capttive portal string
+	CAPTIVE_PORTAL_STR='{"status":0, "auth_type":"","auth_admin":""}'
+	
+	# write flashstart data
+	echo '"flashstart":{"version":"'$MY_VERSION'", "catchall_port":'$CATCH_ALL_CODE', "captive_portal":'$CAPTIVE_PORTAL_STR'},' >> $STAT_TMP
+	
+	# write nethserver data
+	echo '"nethserver":{"token":"", "updates":"0"}' >> $STAT_TMP
+	
+	# finalize file
+	fnsc_finalize_tmp_file $STAT_TMP "statistics"
+	
+	# set var
+	SEND_TO_API=1
+	
+	# Log
+	fn_log "$CALL_PROC" "($CURRENT_PID) $LOG_LABEL_INFO STATISTICS - Checked"
+fi
+
+#-------------------------------
+# GET ACTIVE_DEVICES
+#-------------------------------
+if [ "$WHO" == "" -o $(fn_check_substring $WHO "ACTIVE_DEVICES") == "1" ]; then
+	# init temp file
+	DEV_TMP=$(fnsc_init_tmp_file active_devices)
+	
+	# create temp xml file of ipset
+	TMP_IPSET_FILE=$PATH_RAM_TEMP"fs_hybrid_ipset.tmp"
+	$IPSET -L -output xml > $TMP_IPSET_FILE
+	
+	# create list
+	STRING_HOST=""
+	STRING_HOSTGROUP=""
+	STRING_IPRANGE=""
+	
+	for line in $($PERL -e 'use FlashStartHybrid::NethServerObject; my @l = FlashStartHybrid::NethServerObject::return_ipset_sessions_list("'$TMP_IPSET_FILE'"); foreach my $e (@l) { print "$e->{ip};$e->{port};$e->{session}->{type};$e->{session}->{name};$e->{session}->{host}\n"; }') ; do 
+		# get data
+		IP=$(echo "$line" | cut -d ';' -f 1)
+		PORT=$(echo "$line" | cut -d ';' -f 2)
+		TYPE=$(echo "$line" | cut -d ';' -f 3)
+		NAME=$(echo "$line" | cut -d ';' -f 4)
+		HOST=$(echo "$line" | cut -d ';' -f 5)
+		
+		# add IP to list
+		IPSET_IP_LIST=$IPSET_IP_LIST";$IP"
+		
+		if [ "$TYPE" == "host" ]; then
+			STRING_HOST=$STRING_HOST'{"name": "'$NAME'", "ip": "'$IP'", "port": "'$PORT'"},'
+			
+		elif [ "$TYPE" == "host_group" ]; then
+			STRING_HOSTGROUP=$STRING_HOSTGROUP'{"name": "'$HOST'", "ip": "'$IP'", "port": "'$PORT'", "group": "'$NAME'"},'
+			
+		elif [ "$TYPE" == "iprange" ]; then
+			STRING_IPRANGE=$STRING_IPRANGE'{"name": "'$NAME'", "ip": "'$IP'", "port": "'$PORT'"},'
+			
+		fi		
+	done
+	
+	# add to file
+	if [ "$STRING_HOST" != "" ]; then
+		STRING=$(echo "$STRING_HOST" | sed '$s/,$//')
+		echo '"host":[ '$STRING'],' >> $DEV_TMP
+	fi
+	if [ "$STRING_HOSTGROUP" != "" ]; then
+		STRING=$(echo "$STRING_HOSTGROUP" | sed '$s/,$//')
+		echo '"host_group":[ '$STRING'],' >> $DEV_TMP
+	fi
+	if [ "$STRING_IPRANGE" != "" ]; then
+		STRING=$(echo "$STRING_IPRANGE" | sed '$s/,$//')
+		echo '"iprange":[ '$STRING'],' >> $DEV_TMP
+	fi
+	
+	# finalize file
+	fnsc_finalize_tmp_file $DEV_TMP "active_devices"
+	# set var
+	SEND_TO_API=1
+	# Log
+	fn_log "$CALL_PROC" "($CURRENT_PID) $LOG_LABEL_INFO ACTIVE_DEVICES - Checked"
+fi
+
+
+#-------------------------------
+# GET ACTIVE_SESSIONS
+#-------------------------------
+if [ "$WHO" == "" -o $(fn_check_substring $WHO "ACTIVE_SESSIONS") == "1" ]; then
+	# init temp file
+	SESS_TMP=$(fnsc_init_tmp_file active_sessions)
+	
+	# get object IP if not executed ACTIVE_DEVICES
+	if [ "$WHO" != "" -a $(fn_check_substring $WHO "ACTIVE_DEVICES") == "0" ]; then
+		# create temp xml file of ipset
+		TMP_IPSET_FILE=$PATH_RAM_TEMP"fs_hybrid_ipset.tmp"
+		$IPSET -L -output xml > $TMP_IPSET_FILE
+		
+		for line in $($PERL -e 'use FlashStartHybrid::NethServerObject; my @l = FlashStartHybrid::NethServerObject::return_ipset_sessions_list("'$TMP_IPSET_FILE'"); foreach my $e (@l) { print "$e->{ip};$e->{port};$e->{session}->{type};$e->{session}->{name};$e->{session}->{host}\n"; }') ; do 
+			# get data
+			IP=$(echo "$line" | cut -d ';' -f 1)
+			
+			# add IP to list
+			IPSET_IP_LIST=$IPSET_IP_LIST";$IP"
+		done
+	fi
+	
+	# finalize file
+	fnsc_finalize_tmp_file $SESS_TMP "active_sessions" "array"
+	# set var
+	SEND_TO_API=1
+	# Log
+	fn_log "$CALL_PROC" "($CURRENT_PID) $LOG_LABEL_INFO ACTIVE_SESSIONS - Checked"
+fi
+
+
+#-------------------------------
+# GET PROCEDURES STATUS
+#-------------------------------
+if [ "$WHO" == "" -o $(fn_check_substring $WHO "PROCEDURES") == "1" ]; then
+
+	# get procedure for background process.
+	source $PATH_LIB/fsdaemon.array
+	
+	# init temp file
+	PROC_TMP=$(fnsc_init_tmp_file procedures)
+
+	# get procedure status
+	for FILE in $(ls -d $PROCEDURE_LOG_DIR* | grep -v ".error")
+	do
+		FILE_DATA=$(basename -- "$FILE")
+		PROC_NAME="${FILE_DATA%.*}"
+		
+		# set error file
+		FILE_ERROR=$FILE".error"
+		
+		# get a file's last modified date in Bash
+		PROC_DATE=$(stat -c '%.19y' $FILE)
+		
+		# init
+		PROC_ERROR=""
+		PROC_DATA=""
+		
+		# if exists file
+		if [ -f $FILE_ERROR ]; then
+			# get date
+			PROC_DATE_ERROR=$(stat -c '%.19y' $FILE_ERROR)
+			
+			# get content
+			CONT_FILE=$(cat $FILE_ERROR)
+			
+			# remove quote
+			PROC_MSG_ERROR=$(echo "$CONT_FILE" | sed 's/"//g')
+			PROC_MSG_ERROR=$(echo "$PROC_MSG_ERROR" | sed "s/'//g")
+			
+			# set error string
+			PROC_ERROR='"date":"'$PROC_DATE_ERROR'","message":"'$PROC_MSG_ERROR'"'
+		fi
+		
+		# get queue configuration
+		QUEUE_CODE=$(fn_return_queue_code $PROC_NAME)
+		if [ "$QUEUE_CODE" != "" ]; then 
+			# get timing
+			QUEUE_TIME=$(fn_return_queue_timing $QUEUE_CODE)
+			
+			# set data
+			if [ "$QUEUE_TIME" != "" ]; then
+				PROC_DATA='"timing": "'$QUEUE_TIME's"'
+			fi
+		fi
+		
+		
+		# set data
+		if [ "$(fnsc_check_procedure $PROC_NAME)" == "1" ]; then
+			echo '"'$PROC_NAME'":{"data":{'$PROC_DATA'}, "last_update":"'$PROC_DATE'", "error":{'$PROC_ERROR'}},' >> $PROC_TMP
+		fi
+		
+		# remove error file
+		rm -f $FILE_ERROR
+		
+	done
+	
+	# check file
+	if [ "$(cat $PROC_TMP)" != "" ]; then
+		# finalize file
+		fnsc_finalize_tmp_file $PROC_TMP "procedures"
+		# set var
+		SEND_TO_API=1
+		# Log
+		fn_log "$CALL_PROC" "($CURRENT_PID) $LOG_LABEL_INFO PROCEDURES - Checked"
+	else
+		# Log
+		fn_log "$CALL_PROC" "($CURRENT_PID) $LOG_LABEL_INFO PROCEDURES - Nothing to send"
+	fi
+fi
+
+
+# check to send
+if [ "$SEND_TO_API" == "1" ]; then
+	
+	# prepare file: (full) add curly brackets
+	fn_api_prepare_file_data_object "" $CHECK_TMP
+
+	# set GET data
+	GET_DATA="FILE@"$CHECK_TMP
+
+	## call sync/groups route
+	CALL_CHECK=$(fn_call_api "$API_VERSION/hybrid/check" "$AUTH_EMAIL" "POST" "$GET_DATA" "*" "application/json")
+	## set responsefor log
+	RESPONSE_LOG=$(fn_api_remove_status "$CALL_CHECK")
+	
+	if [[ "$CALL_GROUPS" == "$API_RESPONSE_MESSAGE_ERROR"* ]]; then
+		# log error
+		fn_log "$CALL_PROC" "($CURRENT_PID) $LOG_LABEL_ERROR Call Check API: $CALL_CHECK"
+	else
+		# Log result
+		fn_log "$CALL_PROC" "($CURRENT_PID) $LOG_LABEL_INFO Call Check API: $RESPONSE_LOG"
+	fi
+fi
+
+# clear file
+if [ -f $TMP_IPSET_FILE ]; then
+	# remove file ipset
+	rm -f $TMP_IPSET_FILE
+fi
+
+
+
+
+

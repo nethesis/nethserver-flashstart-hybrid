@@ -1,0 +1,130 @@
+#!/bin/sh
+
+#-------------------------------------------------------------
+# FLASHSTART HYBRID  - call_jobs SCRIPTS
+#-------------------------------------------------------------
+# check call_jobs inlcude defined in fs_hybrid
+if [ "$INIT_SRC_INCLUDE" != "1" ]; then echo "call %SCRIPT_DIR%/%SCRIPT_FS% call_jobs"; exit; fi
+
+# check auth data
+if [ "$AUTH_EMAIL" == "" ]; then fn_log "$CALL_PROC" "Service Not Configured"; exit; fi
+
+# call API
+CALL_JOB=$(fn_call_api "$API_VERSION/jobs" "$AUTH_EMAIL" "POST" "*")
+
+# check error
+if [[ "$CALL_JOB" == "$API_RESPONSE_MESSAGE_ERROR"* ]]; then
+	# log error
+	fn_log "$CALL_PROC" "$LOG_LABEL_ERROR $CALL_JOB"	
+else
+	# init var
+	CHECK_ZONE_RELOAD=0
+	# set count split
+	SPLIT_FIELD=";"
+
+	# count line
+	COUNT_JOB_ALL=$(echo "${CALL_JOB}" | awk -F"${SPLIT_FIELD}" '{print NF-1}')
+	# get line number
+	COUNT_JOB=$(echo $((COUNT_JOB_ALL / 2)))
+
+	# Log job count
+	fn_log "$CALL_PROC" "$LOG_LABEL_INFO JOB: $COUNT_JOB"
+
+	# get list
+	for line in $CALL_JOB; do
+
+		# remove new line char
+		THIS_LINE=$(echo "${line}" | sed -e 's/^[ \t]*//')
+
+		# get code job
+		CODE_JOB=$(echo "$THIS_LINE" | cut -d ';' -f 1)
+
+		# esecute by job code
+		if [ "$CODE_JOB" = "LOGIN" -o "$CODE_JOB" = "LOGOUT" ]; then
+			# get data
+			IP=$(echo "$THIS_LINE" | cut -d ';' -f 2)
+			DNS=$(echo "$THIS_LINE" | cut -d ';' -f 3)
+			LOG=$(echo "$THIS_LINE" | cut -d ';' -f 4)
+			USER=$(echo "$THIS_LINE" | cut -d ';' -f 5)
+			START_EPOCH=$(echo "$THIS_LINE" | cut -d ';' -f 6)
+			
+			# Log
+			fn_log "$CALL_PROC" "$LOG_LABEL_INFO $CODE_JOB: $IP $DNS $USER $DNS $START_EPOCH"
+			#
+			#call match clients
+			$SCRIPT_FS match_clients "$CODE_JOB" "$IP" "$DNS" "$LOG" "$USER" "$START_EPOCH"
+		
+		elif [ "$CODE_JOB" = "LOGIN_OBJ" -o "$CODE_JOB" = "LOGOUT_OBJ" ]; then
+			# get data
+			TYPE=$(echo "$THIS_LINE" | cut -d ';' -f 2)
+			NAME=$(echo "$THIS_LINE" | cut -d ';' -f 3)
+			DNS=$(echo "$THIS_LINE" | cut -d ';' -f 4)
+			
+			# Log
+			fn_log "$CALL_PROC" "$LOG_LABEL_INFO $CODE_JOB: $TYPE $NAME $DNS"
+			#
+			#call match clients
+			$SCRIPT_FS match_object "$CODE_JOB" "$TYPE" "$NAME" "$DNS"	
+			
+		elif [ "$CODE_JOB" = "ZONE" -o "$CODE_JOB" = "DELETE_ZONE" ]; then
+			# get data
+			ZONE=$(echo "$THIS_LINE" | cut -d ';' -f 2)
+			IP=$(echo "$THIS_LINE" | cut -d ';' -f 3)
+			
+			# set action
+			ACTION=""
+			if [ "$CODE_JOB" = "ZONE" ]; then 
+				ACTION="ADD"
+			elif [ "$CODE_JOB" = "DELETE_ZONE" ]; then
+				ACTION="DEL"
+			fi
+			
+			#call create zone
+			CHECK_ZONE_RELOAD=$($SCRIPT_FS zone "$ACTION" "$ZONE" "$IP")
+				
+		
+		elif [ "$CODE_JOB" = "INIT_JOBS" ]; then
+			
+			#call procedure
+			$SCRIPT_FS init_jobs
+		
+		elif [ "$CODE_JOB" = "CONFIGURE_CATCH_ALL" ]; then
+		
+			# call procedure
+			$SCRIPT_FS configure_catch_all
+			
+		elif [ "$CODE_JOB" = "CONFIGURE_QUEUE_TIMING" ]; then
+		
+			# call procedure
+			$SCRIPT_FS configure_queue_timing
+					
+		elif [ "$CODE_JOB" = "UPDATE" ]; then
+			# get data
+			ID=$(echo "$THIS_LINE" | cut -d ';' -f 2)
+			VERSION=$(echo "$THIS_LINE" | cut -d ';' -f 3)
+			
+			# Log update
+			fn_log "$CALL_PROC" "$LOG_LABEL_INFO UPDATE: $ID $VERSION"
+			
+			# call update
+			$SCRIPT_FS software_update "$VERSION"
+			
+		elif [ "$CODE_JOB" = "NEW_DNS" ]; then
+			# call procedure
+			$SCRIPT_FS new_dns
+					
+		elif [ "$CODE_JOB" = "SYSTEM_CHECK" ]; then
+			# call procedure
+			$SCRIPT_FS system_check	
+		fi
+
+	done
+	
+	
+	# check zone reload
+	if [ "$CHECK_ZONE_RELOAD" = "1" ]; then 
+		fn_zone_reload
+	fi
+	
+fi	
+

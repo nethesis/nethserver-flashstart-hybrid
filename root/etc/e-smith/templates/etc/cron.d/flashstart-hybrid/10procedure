@@ -1,0 +1,20 @@
+#
+# 10procedure - System procedure
+#
+{
+	
+	use FlashStartHybrid::QueueTiming; 
+	
+	my $fs = "/usr/libexec/flashstart-hybrid/fs_hybrid";
+	
+	# get timing
+	my $config = FlashStartHybrid::QueueTiming::crontab_get_config();
+
+	# print data
+	for my $key (sort keys $config) {
+		$OUT .= "# Procedure $key \n";
+		$OUT .= "$config->{$key}->{minute} $config->{$key}->{hour} $config->{$key}->{month_day} $config->{$key}->{month} $config->{$key}->{week_day} root $fs $key \n";
+		$OUT .= " \n";
+	}
+
+}

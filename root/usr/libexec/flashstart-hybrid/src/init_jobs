@@ -1,0 +1,43 @@
+#!/bin/sh
+
+#-------------------------------------------------------------
+# FLASHSTART HYBRID  - init_jobs SCRIPTS
+#-------------------------------------------------------------
+# check call_jobs inlcude defined in fs_hybrid
+if [ "$INIT_SRC_INCLUDE" != "1" ]; then echo "call %SCRIPT_DIR%/%SCRIPT_FS% init_jobs"; exit; fi
+
+# check auth data
+if [ "$AUTH_EMAIL" == "" ]; then fn_log "$CALL_PROC" "Service Not Configured"; exit; fi
+
+# include function by function
+fn_include_func_file dns_utility
+
+# get data
+CLEAR_BEFORE=$2				# clear ipset and session file before call init [ 0 or empty = no | 1 = yes ]
+
+# if requested
+if [ "$CLEAR_BEFORE" == "1" ]; then
+	# clear ipset and session
+	fn_clear_ipset_and_session "$CALL_PROC"
+fi
+
+# clear zone file
+$PERL -e 'use FlashStartHybrid::ServiceDNS; my $t = FlashStartHybrid::ServiceDNS::clear_zone_list();'
+fn_log "$CALL_PROC" "$LOG_LABEL_INFO zone clear list"
+
+# call API
+INIT_JOB=$(fn_call_api "$API_VERSION/jobs/init" "$AUTH_EMAIL" "POST" "*")
+
+if [[ "$INIT_JOB" == "$API_RESPONSE_MESSAGE_ERROR"* ]]; then
+  # log error
+  fn_log "$CALL_PROC" "$LOG_LABEL_ERROR $INIT_JOB"
+  
+else 
+	
+	# remove httpd status
+	LOG_STRING=$(fn_api_remove_status "$INIT_JOB")
+
+	# Log job count
+	fn_log "$CALL_PROC" "$LOG_LABEL_INFO JOB: $LOG_STRING"
+	
+fi

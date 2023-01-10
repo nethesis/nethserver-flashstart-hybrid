@@ -1,0 +1,182 @@
+#!/bin/sh
+
+# Log
+fn_log "$CALL_PROC" "$LOG_LABEL_INFO Execute file: $THIS_FILE_NAME"
+
+
+#-----------------------------------------
+# 2022-09-29 - Fix python lib				<<<
+#-----------------------------------------
+CHECK_LIB=$(pip3 show google-api-python-client | grep "Version" | wc -l)
+if [ "$CHECK_LIB" == "0" ]; then
+	# install with version
+	pip3 install --ignore-requires-python google-api-python-client==2.48.0
+	pip3 install --ignore-requires-python google-auth-httplib2
+	pip3 install --ignore-requires-python google-auth-oauthlib==0.5.1
+	pip3 install --ignore-requires-python validators==0.19.0
+	pip3 install --ignore-requires-python prettytable==2.5.0
+	pip3 install --ignore-requires-python oauth2client==4.1.3
+fi
+# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+#-----------------------------------------
+# 2022-09-29 - New system_check procedure 	<<<
+#-----------------------------------------
+# add procedure log directory
+if [ ! -d "/var/log/flashstart-hybrid-proc/" ]; then
+	mkdir /var/log/flashstart-hybrid-proc/
+fi
+# add procedure to crontab
+/usr/sbin/e-smith/expand-template /etc/cron.d/flashstart-hybrid
+# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+
+#-----------------------------------------
+# 2022-09-29 - Check rule block httpd	<<<
+#-----------------------------------------
+# Log
+fn_log "$CALL_PROC" "$LOG_LABEL_INFO Check rule httpd"
+# get data
+READ_RULES=$(echo '{"action":"list","expand":true}' | /usr/bin/sudo /usr/libexec/nethserver/api/nethserver-firewall-base/local-rules/read | jq)
+CHECK_ADD=$($__DIR__/update_post_src/check/check_local_rule_httpd.pl "$READ_RULES")
+# if to add 
+if [ "$CHECK_ADD" == "1" ]; then
+	# validate
+	RESPONSE_JSON=$(echo '{"action":"create-rule","Log":"none","Time":null,"Position":3,"status":"enabled","Service":{"Ports":["80","443"],"name":"httpd","Protocol":"tcp","type":"service","Description":""},"order":"bottom","Action":"reject","Dst":{"name":"fw","type":"fw"},"id":null,"Src":{"name":"red","Description":"RED Ruolo","type":"role"},"type":"rule","Description":"Blocco firewall su Red"}' | /usr/bin/sudo /usr/libexec/nethserver/api/nethserver-firewall-base/local-rules/validate | jq)
+	RESULT_JSON=$(fn_json_trim "$RESPONSE_JSON")
+	VALID=$(fn_json_parse "$RESULT_JSON" "state")
+	
+	if [ "$VALID" == "success" ]; then
+		# create
+		RESPONSE_JSON=$(echo '{"action":"create-rule","Log":"none","Time":null,"Position":3,"status":"enabled","Service":{"Ports":["80","443"],"name":"httpd","Protocol":"tcp","type":"service","Description":""},"order":"bottom","Action":"reject","Dst":{"name":"fw","type":"fw"},"id":null,"Src":{"name":"red","Description":"RED Ruolo","type":"role"},"type":"rule","Description":"Blocco firewall su Red"}' | /usr/bin/setsid /usr/bin/sudo /usr/libexec/nethserver/api/nethserver-firewall-base/local-rules/create | jq)
+		RESULT_JSON=$(fn_json_trim "$RESPONSE_JSON")
+		VALID=$(fn_json_parse "$RESULT_JSON" "state")
+		
+		if [ "$VALID" == "success" ]; then
+			# apply
+			RESPONSE_JSON=$(echo '{"action":"apply"}' | /usr/bin/setsid /usr/bin/sudo /usr/libexec/nethserver/api/nethserver-firewall-base/settings/update)
+			VALID=$(echo "$RESPONSE_JSON" | grep "{\"state\":\"success\"}" | wc -l)
+			
+			if [ "$VALID" == "1" ]; then
+				# Log error
+				fn_log "$CALL_PROC" "$LOG_LABEL_INFO Rule httpd applied"
+			else
+				# Log error
+				fn_log "$CALL_PROC" "$LOG_LABEL_ERROR Rule httpd not applied"
+			fi
+		
+		else
+			# Log error
+			fn_log "$CALL_PROC" "$LOG_LABEL_ERROR Rule httpd not created ($RESULT_JSON)"
+		fi
+	else
+		# Log error		
+		fn_log "$CALL_PROC" "$LOG_LABEL_ERROR Rule httpd not valid ($RESULT_JSON)"
+	fi
+else
+	# Log
+	fn_log "$CALL_PROC" "$LOG_LABEL_INFO Rule httpd already created"
+fi
+# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+
+#-----------------------------------------
+# 2022-09-29 - Check rule block sshd	<<<
+#-----------------------------------------
+# Log
+fn_log "$CALL_PROC" "$LOG_LABEL_INFO Check rule sshd"
+# get data
+READ_SERVICE=$(echo '{"action":"local-services"}' | /usr/bin/sudo /usr/libexec/nethserver/api/nethserver-firewall-base/objects/read | jq)
+READ_RULES=$(echo '{"action":"list","expand":true}' | /usr/bin/sudo /usr/libexec/nethserver/api/nethserver-firewall-base/local-rules/read | jq)
+CHECK_DATA=$($__DIR__/update_post_src/check/check_local_rule_sshd.pl "$READ_RULES" "$READ_SERVICE")
+CHECK_ADD=$(echo "$CHECK_DATA" | cut -d ';' -f 1)
+CHECK_PORT=$(echo "$CHECK_DATA" | cut -d ';' -f 2)
+
+ALLOW_VALID_RULE=""
+BLOCK_VALID_RULE=""
+
+# if to add 
+if [ "$CHECK_ADD" == "1" ]; then
+	# validate Allow
+	ALLOW_RESPONSE_JSON=$(echo '{"action":"create-rule","Log":"none","Time":null,"Position":1,"status":"enabled","Service":{"Ports":["'$CHECK_PORT'"],"name":"sshd","Protocol":"tcp","type":"service","Description":""},"order":"top","Action":"accept","Dst":{"name":"fw","type":"fw"},"id":null,"Src":{"name":"185.236.106.0/24","type":"raw"},"type":"rule","Description":"Consenti SSH da FlashStart"}' | /usr/bin/setsid /usr/bin/sudo /usr/libexec/nethserver/api/nethserver-firewall-base/local-rules/validate | jq)
+	ALLOW_RESULT_JSON=$(fn_json_trim "$ALLOW_RESPONSE_JSON")
+	ALLOW_VALID=$(fn_json_parse "$ALLOW_RESULT_JSON" "state")
+	
+	if [ "$ALLOW_VALID" == "success" ]; then
+		# create Allow
+		ALLOW_RESPONSE_JSON=$(echo '{"action":"create-rule","Log":"none","Time":null,"Position":1,"status":"enabled","Service":{"Ports":["'$CHECK_PORT'"],"name":"sshd","Protocol":"tcp","type":"service","Description":""},"order":"top","Action":"accept","Dst":{"name":"fw","type":"fw"},"id":null,"Src":{"name":"185.236.106.0/24","type":"raw"},"type":"rule","Description":"Consenti SSH da FlashStart"}' | /usr/bin/setsid /usr/bin/sudo /usr/libexec/nethserver/api/nethserver-firewall-base/local-rules/create | jq)
+		ALLOW_RESULT_JSON=$(fn_json_trim "$ALLOW_RESPONSE_JSON")
+		ALLOW_VALID_RULE=$(fn_json_parse "$ALLOW_RESULT_JSON" "state")
+		
+		if [ "$ALLOW_VALID_RULE" == "success" ]; then
+			# Log 
+			fn_log "$CALL_PROC" "$LOG_LABEL_INFO Rule Allow sshd created"
+		else
+			# Log error
+			fn_log "$CALL_PROC" "$LOG_LABEL_ERROR Rule Allow sshd not created ($RESULT_JSON)"
+		fi
+	else
+		# Log error		
+		fn_log "$CALL_PROC" "$LOG_LABEL_ERROR Rule Allow sshd not valid ($RESULT_JSON)"
+	fi
+	
+	# validate Block
+	BLOCK_RESPONSE_JSON=$(echo '{"action":"create-rule","Log":"none","Time":null,"Position":2,"status":"enabled","Service":{"Ports":["'$CHECK_PORT'"],"name":"sshd","Protocol":"tcp","type":"service","Description":""},"order":"bottom","Action":"reject","Dst":{"name":"fw","type":"fw"},"id":null,"Src":{"name":"red","Description":"RED Ruolo","type":"role"},"type":"rule","Description":"Blocco SSH su Red"}' | /usr/bin/sudo /usr/libexec/nethserver/api/nethserver-firewall-base/local-rules/validate | jq)
+	BLOCK_RESULT_JSON=$(fn_json_trim "$BLOCK_RESPONSE_JSON")
+	BLOCK_VALID=$(fn_json_parse "$BLOCK_RESULT_JSON" "state")
+	
+	if [ "$BLOCK_VALID" == "success" ]; then
+		# create Block
+		BLOCK_RESPONSE_JSON=$(echo '{"action":"create-rule","Log":"none","Time":null,"Position":2,"status":"enabled","Service":{"Ports":["'$CHECK_PORT'"],"name":"sshd","Protocol":"tcp","type":"service","Description":""},"order":"bottom","Action":"reject","Dst":{"name":"fw","type":"fw"},"id":null,"Src":{"name":"red","Description":"RED Ruolo","type":"role"},"type":"rule","Description":"Blocco SSH su Red"}' | /usr/bin/setsid /usr/bin/sudo /usr/libexec/nethserver/api/nethserver-firewall-base/local-rules/create | jq)
+		BLOCK_RESULT_JSON=$(fn_json_trim "$BLOCK_RESPONSE_JSON")
+		BLOCK_VALID_RULE=$(fn_json_parse "$BLOCK_RESULT_JSON" "state")
+		
+		if [ "$BLOCK_VALID_RULE" == "success" ]; then
+			# Log error
+			fn_log "$CALL_PROC" "$LOG_LABEL_INFO Rule Block sshd created"
+		
+		else
+			# Log error
+			fn_log "$CALL_PROC" "$LOG_LABEL_ERROR Rule Block sshd not created ($RESULT_JSON)"
+		fi
+	else
+		# Log error		
+		fn_log "$CALL_PROC" "$LOG_LABEL_ERROR Rule Block sshd not valid ($RESULT_JSON)"
+	fi
+	
+	if [ "$ALLOW_VALID_RULE" == "success" -a "$BLOCK_VALID_RULE" == "success" ]; then
+		# apply Block
+		RESPONSE_JSON=$(echo '{"action":"apply"}' | /usr/bin/setsid /usr/bin/sudo /usr/libexec/nethserver/api/nethserver-firewall-base/settings/update)
+		VALID=$(echo "$RESPONSE_JSON" | grep "{\"state\":\"success\"}" | wc -l)
+		
+		if [ "$VALID" == "1" ]; then
+			# Log error
+			fn_log "$CALL_PROC" "$LOG_LABEL_INFO Rule sshd applied"
+		else
+			# Log error
+			fn_log "$CALL_PROC" "$LOG_LABEL_ERROR Rule sshd not applied"
+		fi
+	fi	
+else
+	# Log
+	fn_log "$CALL_PROC" "$LOG_LABEL_INFO Rule Block sshd already created"
+fi
+# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+#-----------------------------------------
+# 2022-10-03 - Fix empty captive portal	<<<
+#-----------------------------------------
+/usr/sbin/e-smith/expand-template /var/named/data/response-policy.db
+/usr/sbin/e-smith/expand-template /var/named/data/trusted-policy.db
+
+# >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+
+
+
+#-----------------------------------------
+# set end var
+#-----------------------------------------
+UPDPOST_SERVICE_RELOAD=1
+UPDPOST_SEND_SETTINGS=1
+
+# >>>
