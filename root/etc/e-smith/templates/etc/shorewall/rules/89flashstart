@@ -7,12 +7,21 @@
     my $status = $flashstart{'status'} || 'disabled';
     my $zones = $flashstart{'Roles'} || 'green';
     my $bypass = $flashstart{'Bypass'} || '';
-    my $unboundPort = $unbound{'UDPPort'} || '10053';
+    my $dnsMasqPort = '53';
+
+    use FlashStartHybrid::IpsetDNS;
 
     if ($status eq 'enabled') {
+        # get cath-all config
+        my $catch_all = FlashStartHybrid::IpsetDNS->get_catch_all();
+        my $catch_all_data = FlashStartHybrid::IpsetDNS->get_catch_all_data();
+        my @list_rule = FlashStartHybrid::IpsetDNS->return_row();
+
+        my $catch_all_port = $catch_all_data->{service_port};
+
         my @bypass_src = ();
         my $bypass_src_str = '';
-
+        my $bypass_src_str_all = '';
 
         foreach my $host (split(",",$bypass)) {
             my $address = $fw->getAddress($host) || next;
@@ -20,7 +29,8 @@
         }
 
         if (scalar(@bypass_src)>0) {
-            $bypass_src_str = ":!".join(',',@bypass_src);
+            $bypass_src_str = "!".join(',',@bypass_src);
+            $bypass_src_str_all = ":$bypass_src_str";
         }
 
         foreach my $zone (split(",",$zones)) {
@@ -32,9 +42,18 @@
                 $zone = 'hotsp';
             }
 
-            $OUT .= "?COMMENT Transparent DNS proxy on $zone for port 53\n";
-            $OUT .= "REDIRECT\t$zone$bypass_src_str\t$unboundPort\tudp\t53\n";
-            $OUT .= "REDIRECT\t$zone$bypass_src_str\t$unboundPort\ttcp\t53\n";
+            foreach my $elem (@list_rule) {
+                # exclude catch-all profile and bypass profile
+                if ($elem->{service_port} ne $catch_all_port && $elem->{service_port}) {
+                    # set rule for this setname
+                    $OUT .= "?COMMENT FlashStart Rules on $elem->{profile} for port 53 \n";
+                    $OUT .= "REDIRECT\t$zone:+$elem->{profile}$bypass_src_str\t$elem->{service_port}\tudp\t$dnsMasqPort\n";
+                    $OUT .= "?COMMENT\n";
+                }
+            }
+            # For all [ catch-all profile ]
+            $OUT .= "?COMMENT FlashStart Rules [catch-all] for port 53\n";
+            $OUT .= "REDIRECT\t$zone$bypass_src_str_all\t$catch_all_port\tudp\t$dnsMasqPort\n";
             $OUT .= "?COMMENT\n";
         }
     }
