@@ -15,6 +15,8 @@ Requires: perl-List-MoreUtils
 BuildRequires: perl, php-soap
 BuildRequires: nethserver-devtools
 
+Conflicts: nethserver-flashstart
+
 BuildRequires: systemd
 Requires(post): systemd
 Requires(preun): systemd
