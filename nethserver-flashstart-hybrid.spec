@@ -50,12 +50,15 @@ cp -a %{name}.json %{buildroot}/usr/share/cockpit/nethserver/applications/
 cp -a api/* %{buildroot}/usr/libexec/nethserver/api/%{name}/
 chmod +x %{buildroot}/usr/libexec/nethserver/api/%{name}/*
 
+mkdir -p %{buildroot}/var/log/flashstart-hybrid-proc/
+
 %{genfilelist} %{buildroot} > %{name}-%{version}-filelist
 
 %files -f %{name}-%{version}-filelist
 %defattr(-,root,root)
 %dir %{_nseventsdir}/%{name}-update
 %dir %{_nsdbconfdir}/flashstart
+%dir /var/log/flashstart-hybrid-proc
 %doc COPYING
 
 %post
