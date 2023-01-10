@@ -91,6 +91,7 @@ event_templates($event, qw(
 ));
 
 event_actions($event, qw(
+      flashstarthybrid-send-settings 90
       nethserver-flashstart-hybrid-auth-ip 90
 ));
 
@@ -102,7 +103,7 @@ event_services($event, qw(
 # flashstarthybrid-dns-update
 #
 
-$event = 'flashstarthybrid-dns-update'
+$event = 'flashstarthybrid-dns-update';
 
 event_actions($event, qw(
       flashstarthybrid-expand-dnsmasq 30
@@ -121,7 +122,7 @@ event_services($event, qw(
 # flashstarthybrid-zone-update
 #
 
-$event = 'flashstarthybrid-zone-update'
+$event = 'flashstarthybrid-zone-update';
 
 event_actions($event, qw(
       flashstarthybrid-expand-dnsmasq 30
@@ -133,4 +134,14 @@ event_services($event, qw(
       dnsmasq@2 restart
       dnsmasq@3 restart
       dnsmasq@4 restart
+));
+
+#
+# firewall-adjust
+#
+
+$event = 'firewall-adjust';
+
+event_actions($event, qw(
+      flashstarthybrid-object-update 90
 ));
