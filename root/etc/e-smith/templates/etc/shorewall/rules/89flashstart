@@ -42,6 +42,14 @@
                 $zone = 'hotsp';
             }
 
+            # open dnsmasq instances ports
+            foreach my $id (0..4) {
+                my $instance = FlashStartHybrid::IpsetDNS::return_search_by_id($id);
+                my $port = $instance->{'service_port'};
+                $OUT.="ACCEPT\t$zone\t\$FW\tudp\t$port\n";
+                $OUT.="ACCEPT\t$zone\t\$FW\ttcp\t$port\n";
+            }
+
             foreach my $elem (@list_rule) {
                 # exclude catch-all profile and bypass profile
                 if ($elem->{service_port} ne $catch_all_port && $elem->{service_port}) {
