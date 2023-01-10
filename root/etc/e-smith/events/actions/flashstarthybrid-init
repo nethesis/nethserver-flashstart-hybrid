@@ -48,3 +48,7 @@ for line in $($PERL -e 'use FlashStartHybrid::IpsetDNS; my @l = FlashStartHybrid
 done
 
 systemctl enable --now flashstart-hybrid
+for i in {0..4}
+do
+    systemctl enable --now dnsmasq@$i
+done

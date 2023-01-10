@@ -20,14 +20,16 @@
 # along with NethServer.  If not, see COPYING.
 #
 
-# Expand all configuration files for dnsamsq instances
+# Expand all dnsmasq instance config file
 
+use strict;
+use warnings;
 use esmith::templates;
 
-foreach (0..4) {
-    esmith::templates::processTemplate({
-        TEMPLATE_PATH => "dnsmasq-instance",
-        OUTPUT_FILENAME => "/etc/dnsamsq-".$_.".conf",
-        "MORE_DATA" => { 'thisID' => $_ }
-    });
-}
+my $id = shift @ARGV || '0';
+
+esmith::templates::processTemplate({
+    TEMPLATE_PATH => "dnsmasq-instance",
+    OUTPUT_FILENAME => "/etc/dnsmasq-$id.conf",
+    "MORE_DATA" => { 'thisID' => $id }
+});
