@@ -1,6 +1,8 @@
-# nethserver-flashstart
+# nethserver-flashstart-hybrid
 
-This package implements DNS filtering using Flashstart servers.
+This work is forked from https://github.com/nethesis/nethserver-flashstart
+
+This package is forked from implements DNS filtering using Flashstart servers.
 
 Every request from local zones to port tcp/udp 53, is redirected to Unbound.
 
@@ -50,21 +52,21 @@ config setprop unbound access $(config getprop flashstart Roles)
 config setprop flashstart Password <pass>
 config setprop flashstart Username <user>
 
-signal-event nethserver-flashstart-save
+signal-event nethserver-flashstart-hybrid-save
 ```
 
 Changing the update interval:
 
 ```
 config setprop flashstart UpdateInterval 5
-signal-event nethserver-flashstart-save
+signal-event nethserver-flashstart-hybrid-save
 ```
 
 ## Force IP renewal
 
 If you need to notify a public IP has change, execute:
 ```
-/etc/e-smith/events/actions/nethserver-flashstart-auth-ip
+/etc/e-smith/events/actions/nethserver-flashstart-hybrid-auth-ip
 ```
 
 ## Testing
