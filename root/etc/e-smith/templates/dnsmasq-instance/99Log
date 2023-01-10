@@ -1,0 +1,7 @@
+#
+# 99Log
+#
+
+log-facility=/var/log/dnsmasq.log
+log-queries
+

@@ -104,16 +104,9 @@ event_services($event, qw(
 
 $event = 'flashstarthybrid-dns-update'
 
-event_templates($event, qw(
-      /etc/dnsmasq-0.conf
-      /etc/dnsmasq-1.conf
-      /etc/dnsmasq-2.conf
-      /etc/dnsmasq-3.conf
-      /etc/dnsmasq-4.conf
-));
-
 event_actions($event, qw(
-      firewall-adjust 30
+      flashstarthybrid-expand-dnsmasq 30
+      firewall-adjust 40
 ));
 
 event_services($event, qw(
@@ -130,12 +123,8 @@ event_services($event, qw(
 
 $event = 'flashstarthybrid-zone-update'
 
-event_templates($event, qw(
-      /etc/dnsmasq-0.conf
-      /etc/dnsmasq-1.conf
-      /etc/dnsmasq-2.conf
-      /etc/dnsmasq-3.conf
-      /etc/dnsmasq-4.conf
+event_actions($event, qw(
+      flashstarthybrid-expand-dnsmasq 30
 ));
 
 event_services($event, qw(
