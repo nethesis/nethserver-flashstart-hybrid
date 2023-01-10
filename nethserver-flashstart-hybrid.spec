@@ -10,6 +10,7 @@ Source1: %{name}-cockpit.tar.gz
 BuildArch: noarch
 
 Requires: nethserver-squid, nethserver-unbound
+Requires: perl-List-MoreUtils
 
 BuildRequires: perl, php-soap
 BuildRequires: nethserver-devtools
