@@ -15,6 +15,11 @@ Requires: perl-List-MoreUtils
 BuildRequires: perl, php-soap
 BuildRequires: nethserver-devtools
 
+BuildRequires: systemd
+Requires(post): systemd
+Requires(preun): systemd
+Requires(postun): systemd
+
 %description
 NethServer FlashStart Hybrid integration.
 See: http://www.flashstart.it/
@@ -52,5 +57,14 @@ chmod +x %{buildroot}/usr/libexec/nethserver/api/%{name}/*
 %dir %{_nseventsdir}/%{name}-update
 %dir %{_nsdbconfdir}/flashstart
 %doc COPYING
+
+%post
+%systemd_post flashstart-hybrid.service
+
+%preun
+%systemd_preun flashstart-hybrid.service
+
+%postun
+%systemd_postun flashstart-hybrid.service
 
 %changelog

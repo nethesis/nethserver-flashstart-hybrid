@@ -46,3 +46,5 @@ for line in $($PERL -e 'use FlashStartHybrid::IpsetDNS; my @l = FlashStartHybrid
 	fn_log "$LOG_PROC" "$LOG_LABEL_INFO ipset $SETNAME [$RESULT_IPSET]"
 	
 done
+
+systemctl enable --now flashstart-hybrid
