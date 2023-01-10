@@ -1,0 +1,9 @@
+#
+# nsapi_nethserver_flashstart
+#
+Cmnd_Alias NSAPI_NETHSERVER_FLASHSTART = \
+    /usr/libexec/nethserver/api/nethserver-flashstart/read, \
+    /usr/libexec/nethserver/api/nethserver-flashstart/validate, \
+    /usr/libexec/nethserver/api/nethserver-flashstart/update
+
+Defaults!NSAPI_NETHSERVER_FLASHSTART !requiretty

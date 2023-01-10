@@ -1,0 +1,41 @@
+#
+# 89flashstart
+#
+{
+    use NethServer::Firewall;
+    my $fw = new NethServer::Firewall();
+    my $status = $flashstart{'status'} || 'disabled';
+    my $zones = $flashstart{'Roles'} || 'green';
+    my $bypass = $flashstart{'Bypass'} || '';
+    my $unboundPort = $unbound{'UDPPort'} || '10053';
+
+    if ($status eq 'enabled') {
+        my @bypass_src = ();
+        my $bypass_src_str = '';
+
+
+        foreach my $host (split(",",$bypass)) {
+            my $address = $fw->getAddress($host) || next;
+            push(@bypass_src,$address);
+        }
+
+        if (scalar(@bypass_src)>0) {
+            $bypass_src_str = ":!".join(',',@bypass_src);
+        }
+
+        foreach my $zone (split(",",$zones)) {
+             my $zone = substr($zone, 0, 5); #truncate zone name to 5 chars
+             if ($zone eq 'green') { # rename green to loc
+                $zone = 'loc';
+            }
+             elsif ($zone eq 'hotspot') { # rename hotspot to hotsp
+                $zone = 'hotsp';
+            }
+
+            $OUT .= "?COMMENT Transparent DNS proxy on $zone for port 53\n";
+            $OUT .= "REDIRECT\t$zone$bypass_src_str\t$unboundPort\tudp\t53\n";
+            $OUT .= "REDIRECT\t$zone$bypass_src_str\t$unboundPort\ttcp\t53\n";
+            $OUT .= "?COMMENT\n";
+        }
+    }
+}

@@ -1,0 +1,5 @@
+#
+# 20_nethserver_flashstart
+#
+%adm ALL=NOPASSWD: /usr/libexec/nethserver/nethserver-flashstart-report
+

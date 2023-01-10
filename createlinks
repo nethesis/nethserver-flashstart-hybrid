@@ -1,0 +1,97 @@
+#!/usr/bin/perl
+
+#
+# Copyright (C) 2013 Nethesis S.r.l.
+# http://www.nethesis.it - support@nethesis.it
+# 
+# This script is part of NethServer.
+# 
+# NethServer is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License,
+# or any later version.
+# 
+# NethServer is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with NethServer.  If not, see <http://www.gnu.org/licenses/>.
+#
+
+use strict;
+use esmith::Build::CreateLinks qw(:all);
+
+#
+# nethserver-flashstart-hybrid-update event
+#
+
+my $event = 'nethserver-flashstart-hybrid-update';
+
+event_actions($event, qw(
+      initialize-default-databases 00
+));
+
+event_templates($event, qw(
+      /etc/squid/squid.conf
+      /etc/cron.d/flashstart-auth-ip
+      /etc/unbound/conf.d/flashstart.conf
+));
+
+event_services($event, qw(
+      squid restart
+      unbound restart
+));
+
+#
+# nethserver-flashstart-hybrid-save event
+#
+
+$event = 'nethserver-flashstart-hybrid-save';
+
+event_actions($event, qw(
+      firewall-adjust 60
+      nethserver-flashstart-auth-ip 70
+));
+
+event_templates($event, qw(
+      /etc/squid/squid.conf
+      /etc/cron.d/flashstart-auth-ip
+      /etc/unbound/conf.d/flashstart.conf
+));
+
+event_services($event, qw(
+      squid restart
+      unbound restart
+));
+
+
+#
+# wan-uplink-update event
+#
+
+$event = 'wan-uplink-update';
+
+event_actions($event, qw(
+      nethserver-flashstart-hybrid-auth-ip 90
+));
+
+
+#
+# interface-update event
+#
+
+$event = 'interface-update';
+
+event_templates($event, qw(
+      /etc/unbound/conf.d/flashstart.conf
+));
+
+event_actions($event, qw(
+      nethserver-flashstart-hybrid-auth-ip 90
+));
+
+event_services($event, qw(
+      unbound restart
+));

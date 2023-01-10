@@ -1,0 +1,134 @@
+#!/usr/bin/php
+<?php
+
+class FlashStartWS
+{
+    /**
+     * Reseller's user name for FlashStart web site
+     *
+     * @var string
+     */
+    private $user = '';
+
+    /**
+     * Reseller's password for FlashStart web site
+     *
+     * @var string
+     */
+    private $password = '';
+
+    /**
+     * WISDL url for FlashStart
+     *
+     * @var string
+     */
+    private $url = 'http://cloud.flashstart.it/ServiceFS/FlashStart.Service.php?wsdl';
+
+    /**
+     * SOAP client
+     *
+     * @var object
+     */
+    private $client = NULL;
+
+    /**
+     * FlashStart token
+     *
+     * @var object
+     */
+    private $token = NULL;
+    
+    /**
+     * Create a SOAP client for FlashStart web site
+     *
+     * @param string $user reseller's user name
+     * @param string $password reseller's password
+     * @param string $url WISDL url (optional)
+     *
+     * @api
+     * @return FlashStart
+     */
+    public function __construct($user, $password, $url = '')
+    {
+        $this->user = $user;
+        $this->password = $password;
+        if ($url) {
+            $this->url = $url;
+        }
+        $this->client = new SoapClient($this->url);
+        try {
+            $this->token = $this->client->Login(array('UserName' => $this->user, 'Password' => $this->password, 'ApplicationID' => 'WBS'));
+            if ($this->token->TokenID == "null") {
+                throw new Exception('Bad credentials');
+            }
+        } catch (Exception $e) {
+            $this->handleException($e);
+        }
+    }
+
+    private function handleException(Exception $ex)
+    {
+        echo "FlashStartWS error: " . $ex->getMessage(). "\n";
+        exit(1);
+    }
+
+    public function getReport()
+    {
+        $ret = array();        
+        try {
+            
+            //set code report
+            $array_report=array('RCATBLOCCATI_CLOUD_MV', 'RMALWARERES_CLOUD_MV');    
+            
+            //for each report
+            foreach($array_report as $v_report) {
+                
+                //set param to send
+                $report_code=$v_report;
+                $customer_email=$this->user;
+                $date_from=date('Y-m-d', strtotime('-5 days'));
+                $date_to=date('Y-m-d');
+                
+                //insert in ReportInputParam
+                $array_report_param=array();
+                $array_report_param["ReportCode"]=$report_code;
+                $array_report_param["CustomerEmail"]=$customer_email;
+                $array_report_param["DateFrom"]=$date_from;
+                $array_report_param["DateTo"]=$date_to;
+                $array_report_param["ProfilePort"]=0;
+                $array_report_param["TimeFrom"]="00:00:00";
+                $array_report_param["TimeTo"]="00:00:00";
+                $array_report_param["ViewDetails"]=0;
+                
+                $result = $this->client->GetReport(array('UserAdmin' => $this->user, 'TokenID' => $this->token->TokenID, 'TransactionID' => 'GET_REPORT', 'ReportInputParam' => $array_report_param ));
+                
+                //get result
+                if (isset($result->ResultReport) AND $result->ResultReport==1) {
+                    //set result
+                    $ret[$v_report]=array();
+                    $ret[$v_report]["title"]=$result->OperationReport->ListReportInfo->iReportInfo->Title;
+                    $ret[$v_report]["url"]=$result->OperationReport->ListReportImage->iReportImage->Url;
+                    $ret[$v_report]["icon"]=$result->OperationReport->ListReportInfo->iReportInfo->Icon;
+                }
+                
+                //remove object
+                unset($result);
+                
+            }
+            
+            return $ret;
+        } catch (Exception $e) {
+            $this->handleException($e);
+        }
+    }
+}
+
+/* */
+$flash = json_decode(exec("/sbin/e-smith/config getjson flashstart"));
+$user=$flash->props->Username; $pass=$flash->props->Password;
+
+$ws = new FlashStartWS($user,$pass);
+$report=$ws->getReport();
+
+echo json_encode($report);
+

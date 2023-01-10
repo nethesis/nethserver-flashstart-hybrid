@@ -1,0 +1,69 @@
+
+#
+# 20server
+#
+
+{
+    use esmith::NetworksDB;
+    use esmith::util;
+    use NethServer::TrustedNetworks;
+    my $ndb = esmith::NetworksDB->open_ro();
+    my $roles = $flashstart{'Roles'} || 'green';
+    my $status = $flashstart{'status'} || 'disabled';
+    my $hsnetwork = $dedalo{'Network'} || $hotspot{'DynamicNet'};
+
+    if ($status eq 'disabled') {
+        return "# Flashstart disabled\n";
+    }
+
+    $OUT .= "# Disable DNSSEC (Flashstart doesn't support it)\n";
+    $OUT .= "server:\n";
+    $OUT .= "      val-permissive-mode: yes\n";
+    $OUT .= "      module-config: \"iterator\"\n";
+    $OUT .= "      do-not-query-localhost: no\n";
+
+    foreach my $role (split(",",$roles)) {
+        my @interfaces = $ndb->get_by_role($role);
+
+        foreach $alias ($ndb->get_all_by_prop('type', 'alias')) {
+            my ($parent, $index) = split(/:/, $alias->key);
+            my $parent_role = $ndb->get_prop($parent, 'role') || '';
+            if ($role eq $parent_role) {
+                push(@interfaces, $alias)
+            }
+        }
+
+        foreach my $interface (@interfaces) {
+            if (($role eq 'hotspot') && ($interface->prop('role') ne "alias")){
+                my ($network, $netbit) = split(/\//, $hsnetwork);
+                my $mask = esmith::util::computeNetmaskFromBits($netbit);
+                my $prefix = esmith::util::computeLocalNetworkPrefix($network, $mask);
+
+                $OUT .= "      # Allow queries from ".$interface->prop('role')."\n";
+                $OUT .= "      interface: ".$prefix."1\n"; # HACK: add 1 to Hotspot network
+                $OUT .= "      access-control: ".$hsnetwork." allow\n\n";
+            }
+            else{
+                $OUT .= "      # Allow queries from ".$interface->prop('role')."\n";
+                $OUT .= "      interface: ".$interface->prop('ipaddr')."\n";
+                $OUT .= "      access-control: ".esmith::util::computeLocalNetworkShortSpec($interface->prop('ipaddr'), $interface->prop('netmask'))." allow\n\n";
+            }
+        }
+
+        foreach $net (NethServer::TrustedNetworks::list_cidr()) {
+            $OUT .= "      # Allow queries from trusted network $net\n";
+            $OUT .= "      access-control: ".$net." allow\n\n";
+        }
+
+    }
+
+    $OUT .= "\n# Add reverse local zones\n";
+    foreach ($ndb->green()) {
+        my $prefix = esmith::util::computeLocalNetworkPrefix($_->prop("ipaddr"), $_->prop("netmask"));
+        my @tmp = split(/\./, $prefix);
+        $prefix = join(".",reverse(@tmp)).".in-addr.arpa.";
+        $OUT .= "      private-domain: \"$prefix\"\n";
+        $OUT .= "      domain-insecure: \"$prefix\"\n";
+        $OUT .= "      local-zone: \"$prefix\" transparent\n";
+    }
+}

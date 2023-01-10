@@ -1,0 +1,1 @@
+*/{{$flashstart{'UpdateInterval'} || "30"}} * * * * root [ -f /etc/e-smith/events/actions/nethserver-flashstart-auth-ip ] && /etc/e-smith/events/actions/nethserver-flashstart-auth-ip

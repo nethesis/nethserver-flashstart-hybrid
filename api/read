@@ -1,0 +1,91 @@
+#!/usr/bin/python
+
+#
+# Copyright (C) 2019 Nethesis S.r.l.
+# http://www.nethesis.it - nethserver@nethesis.it
+#
+# This script is part of NethServer.
+#
+# NethServer is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License,
+# or any later version.
+#
+# NethServer is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with NethServer.  If not, see COPYING.
+#
+
+import sys
+import fileinput
+import subprocess
+import simplejson
+
+def get_config(config_name):
+    bash_command = "/sbin/e-smith/config getjson %s" % config_name
+    process = subprocess.Popen(bash_command.split(), stdout=subprocess.PIPE)
+    output, error = process.communicate()
+    config_json = simplejson.loads(output)
+    return config_json
+
+def get_network_roles():
+    bash_command = "/sbin/e-smith/db networks getjson"
+    process = subprocess.Popen(bash_command.split(), stdout=subprocess.PIPE)
+    output, error = process.communicate()
+    db_networks = simplejson.loads(output)
+    roles_filter = [ "green", "blue", "hotspot" ]
+    network_roles = []
+
+    for elem in db_networks:
+        if "role" in elem["props"] and (elem["props"]["role"] in roles_filter):
+            network_roles.append(elem["props"]["role"])
+    
+    # remove duplicates
+    network_roles = list(dict.fromkeys(network_roles))
+    return { 'networkRoles': network_roles }
+
+def login_flashstart_ok(username, password):
+    bash_command = "/usr/bin/curl -sS https://ddns.flashstart.com/nic/update?hostname=&myip=&wildcard=NOCHG&username=%s&password=%s" % (username, password)
+    process = subprocess.Popen(bash_command.split(), stdout=subprocess.PIPE)
+    output, error = process.communicate()
+
+    if output.rstrip() == 'good':
+        return True
+    else:
+        return False
+
+try:
+    line = fileinput.input()[0].rstrip()
+    input_json = simplejson.loads(line)
+    config = input_json["config"]
+
+    if config == 'flashstart':
+        config = get_config('flashstart')
+        output = simplejson.dumps({ 'configuration': config })
+        print (output)
+    elif config == 'networkRoles':
+        config = get_network_roles()
+        output = simplejson.dumps({ 'configuration': config })
+        print (output)
+    elif config == 'dashboard':
+        flashstart_config = get_config('flashstart')
+        username = flashstart_config['props']['Username']
+        password = flashstart_config['props']['Password']
+        flashstart_enabled = flashstart_config['props']['status']
+        portal_url = flashstart_config['props']['PortalUrl']
+        is_login_ok = login_flashstart_ok(username, password)
+        output = simplejson.dumps({ 'configuration': { 'flashstartEnabled': flashstart_enabled, 'loginOk': is_login_ok, 'portalUrl': portal_url } })
+        print(output)
+    elif config == 'ftl':
+        config = get_config('ftl')
+        output = simplejson.dumps({ 'configuration': config })
+        print (output)
+    else:
+        raise ValueError("invalid config: {}".format(config))
+except Exception, e:
+    print simplejson.dumps({ 'error': "%s" % e })
+    sys.exit(1)

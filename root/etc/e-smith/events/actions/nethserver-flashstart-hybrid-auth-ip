@@ -1,0 +1,27 @@
+#!/usr/bin/perl
+
+use NethServer::Firewall;
+use esmith::ConfigDB;
+my $db = esmith::ConfigDB->open_ro();
+my $fw = new NethServer::Firewall();
+my $flashstart = $db->get('flashstart') || die("Can't opent flashstart key");
+my $status = $flashstart->prop('status') || 'disabled';
+
+if ($status eq 'disabled') {
+    exit 0;
+}
+
+my $user = $flashstart->prop('Username');
+my $pass = $flashstart->prop('Password');
+my $counter = 0;
+
+foreach my $provider ($fw->getProviders()) {
+    if ($counter) {
+        $id = "$user-$counter"
+    } else {
+        $id = $user;
+    }
+    system("curl", "-s", "-o", "/dev/null", "--interface", $provider->{'interface'}, "https://ddns.flashstart.com/nic/update?hostname=&myip=&wildcard=NOCHG&username=$id&password=$pass");
+    $counter++;
+}
+

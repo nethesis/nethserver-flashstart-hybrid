@@ -1,0 +1,22 @@
+{
+  "id": "nethserver-flashstart-hybrid",
+  "name": "FlashStart Hybrid",
+  "summary": "Cloud Content Filter",
+  "description": "Cloud Content Filter",
+  "url": "",
+  "homepage": "https://github.com/nethesis/nethserver-flashstart-hybrid",
+  "provides": ["nethserver-flashstart-hybrid"],
+  "release": {
+    "version": "1.0.0"
+  },
+  "license": "GPL-3.0",
+  "bugs": {
+    "url": "https://github.com/nethesis/dev/issues"
+  },
+  "author": {
+    "name": "Andrea Leardini",
+    "url": "https://github.com/nethesis/nethserver-flashstart-hybrid",
+    "email": "andrea.leardini@nethesis.it"
+  },
+  "icon": "logo.png"
+}
