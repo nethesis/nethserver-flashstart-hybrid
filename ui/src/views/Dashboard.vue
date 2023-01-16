@@ -85,7 +85,7 @@ export default {
       this.uiLoaded = false;
       var ctx = this;
       nethserver.exec(
-        ["nethserver-flashstart/read"],
+        ["nethserver-flashstart-hybrid/read"],
         { "config": "dashboard" },
         null,
         function(success) {
@@ -108,7 +108,7 @@ export default {
       // Check if DNS blacklist is enabled
       var ctx = this;
       nethserver.exec(
-        ["nethserver-flashstart/read"],
+        ["nethserver-flashstart-hybrid/read"],
         { "config": "ftl" },
         null,
         function(success) {

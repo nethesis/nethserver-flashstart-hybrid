@@ -197,7 +197,7 @@
         this.uiLoaded = false;
         var ctx = this;
         nethserver.exec(
-          ["nethserver-flashstart/read"],
+          ["nethserver-flashstart-hybrid/read"],
           { "config": "flashstart" },
           null,
           function(success) {
@@ -230,7 +230,7 @@
         this.bypassText = this.flashstartConfig.Bypass.replace(/,/g, "\n")
         var ctx = this;
         nethserver.exec(
-          ["nethserver-flashstart/read"],
+          ["nethserver-flashstart-hybrid/read"],
           { "config": "networkRoles" },
           null,
           function(success) {
@@ -284,7 +284,7 @@
         }
         var ctx = this;
         nethserver.exec(
-          ["nethserver-flashstart/validate"],
+          ["nethserver-flashstart-hybrid/validate"],
           validateObj,
           null,
           function(success) {
@@ -303,7 +303,7 @@
         nethserver.notifications.error = this.$i18n.t("settings.configuration_update_failed");
         var ctx = this
         nethserver.exec(
-          ["nethserver-flashstart/update"],
+          ["nethserver-flashstart-hybrid/update"],
           validateObj,
           function(stream) {
             console.info("flashstart-configuration-update", stream); /* eslint-disable-line no-console */
@@ -340,7 +340,7 @@
         // Check if DNS blacklist is enabled
         var ctx = this;
         nethserver.exec(
-          ["nethserver-flashstart/read"],
+          ["nethserver-flashstart-hybrid/read"],
           { "config": "ftl" },
           null,
           function(success) {
