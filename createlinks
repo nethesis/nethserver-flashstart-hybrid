@@ -35,12 +35,7 @@ event_actions($event, qw(
 
 event_templates($event, qw(
       /etc/cron.d/flashstart-auth-ip
-      /etc/unbound/conf.d/flashstart.conf
       /etc/cron.d/flashstart-hybrid
-));
-
-event_services($event, qw(
-      unbound restart
 ));
 
 #
@@ -57,13 +52,7 @@ event_actions($event, qw(
 
 event_templates($event, qw(
       /etc/cron.d/flashstart-auth-ip
-      /etc/unbound/conf.d/flashstart.conf
 ));
-
-event_services($event, qw(
-      unbound restart
-));
-
 
 #
 # wan-uplink-update event
@@ -82,17 +71,9 @@ event_actions($event, qw(
 
 $event = 'interface-update';
 
-event_templates($event, qw(
-      /etc/unbound/conf.d/flashstart.conf
-));
-
 event_actions($event, qw(
       flashstarthybrid-send-settings 90
       nethserver-flashstart-hybrid-auth-ip 90
-));
-
-event_services($event, qw(
-      unbound restart
 ));
 
 # 

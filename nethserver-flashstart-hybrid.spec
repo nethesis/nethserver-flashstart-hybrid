@@ -9,7 +9,7 @@ Source0: %{name}-%{version}.tar.gz
 Source1: %{name}-cockpit.tar.gz
 BuildArch: noarch
 
-Requires: nethserver-unbound
+Requires: dnsmasq
 Requires: perl-List-MoreUtils
 
 BuildRequires: perl, php-soap
