@@ -34,14 +34,12 @@ event_actions($event, qw(
 ));
 
 event_templates($event, qw(
-      /etc/squid/squid.conf
       /etc/cron.d/flashstart-auth-ip
       /etc/unbound/conf.d/flashstart.conf
       /etc/cron.d/flashstart-hybrid
 ));
 
 event_services($event, qw(
-      squid restart
       unbound restart
 ));
 
@@ -58,13 +56,11 @@ event_actions($event, qw(
 ));
 
 event_templates($event, qw(
-      /etc/squid/squid.conf
       /etc/cron.d/flashstart-auth-ip
       /etc/unbound/conf.d/flashstart.conf
 ));
 
 event_services($event, qw(
-      squid restart
       unbound restart
 ));
 
