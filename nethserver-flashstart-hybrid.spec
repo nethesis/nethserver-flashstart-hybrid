@@ -61,6 +61,7 @@ mkdir -p %{buildroot}/var/log/flashstart-hybrid-proc/
 %dir %{_nseventsdir}/%{name}-update
 %dir %{_nsdbconfdir}/flashstart
 %dir /var/log/flashstart-hybrid-proc
+%config(noreplace) /etc/flashstart-hybrid/*
 %doc COPYING
 
 %post
