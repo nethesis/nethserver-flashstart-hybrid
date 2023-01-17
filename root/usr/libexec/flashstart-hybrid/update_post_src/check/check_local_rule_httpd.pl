@@ -1,4 +1,4 @@
-#!/bin/perl
+#!/usr/bin/perl
 
 # ----------------------------------------------------------------
 # Check if exits block on 80 and 443 port to Firewall from Red

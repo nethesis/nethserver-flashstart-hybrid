@@ -1,4 +1,4 @@
-#!/bin/perl
+#!/usr/bin/perl
 
 # ----------------------------------------------------------------
 # Check if exits block on sshd port to Firewall from Red
