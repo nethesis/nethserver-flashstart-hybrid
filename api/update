@@ -46,7 +46,7 @@ else
     fi
 fi
 
-/sbin/e-smith/signal-event -j nethserver-flashstart-save
+/sbin/e-smith/signal-event -j nethserver-flashstart-hybrid-save
 if [ $? -gt 0 ]; then
     error "EventFailed" "See /var/log/messages"
 else
