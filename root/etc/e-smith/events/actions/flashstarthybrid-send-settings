@@ -1,0 +1,32 @@
+#!/bin/bash
+
+# include bootstrap for initialize global var
+source /usr/libexec/flashstart-hybrid/bootstrap.var
+
+# check auth data
+if [ "$AUTH_EMAIL" == "" ]; then fn_log "$CALL_PROC" "Service Not Configured"; exit; fi
+
+#-------------------------------
+# GET DATA
+#-------------------------------
+IP=$($PERL -E 'use FlashStartHybrid::SystemStatus; my $ip = FlashStartHybrid::SystemStatus::return_network_ip(); print "$ip";')
+
+if [ "$IP" != "" ]; then
+	
+	# create data
+	SEND_DATA='[{"name":"dns","value":"'$IP'"}]'
+	
+	# send
+	CALL_STATS=$(fn_call_api "$API_VERSION/device/settings" "$AUTH_EMAIL" "POST" "$SEND_DATA")
+
+	# check result
+	if [[ "$CALL_STATS" == "$API_RESPONSE_MESSAGE_ERROR"* ]]; then
+	  # log error
+	  fn_log "$CALL_PROC" "$LOG_LABEL_ERROR $CALL_STATS"
+	else
+
+	  # Log job count
+	  fn_log "$CALL_PROC" "$LOG_LABEL_INFO Sended"	  
+	fi
+
+fi

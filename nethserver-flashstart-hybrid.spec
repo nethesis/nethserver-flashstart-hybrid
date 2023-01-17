@@ -9,10 +9,18 @@ Source0: %{name}-%{version}.tar.gz
 Source1: %{name}-cockpit.tar.gz
 BuildArch: noarch
 
-Requires: nethserver-squid, nethserver-unbound
+Requires: dnsmasq
+Requires: perl-List-MoreUtils
 
 BuildRequires: perl, php-soap
 BuildRequires: nethserver-devtools
+
+Conflicts: nethserver-flashstart
+
+BuildRequires: systemd
+Requires(post): systemd
+Requires(preun): systemd
+Requires(postun): systemd
 
 %description
 NethServer FlashStart Hybrid integration.
@@ -23,6 +31,8 @@ See: http://www.flashstart.it/
 
 %build
 %{makedocs}
+%{__install} -d root%{perl_vendorlib}
+cp -av lib/perl/FlashStartHybrid root%{perl_vendorlib}
 perl createlinks
 for _nsdb in flashstart; do
    mkdir -p root/%{_nsdbconfdir}/${_nsdb}/{migrate,force,defaults}
@@ -42,12 +52,25 @@ cp -a %{name}.json %{buildroot}/usr/share/cockpit/nethserver/applications/
 cp -a api/* %{buildroot}/usr/libexec/nethserver/api/%{name}/
 chmod +x %{buildroot}/usr/libexec/nethserver/api/%{name}/*
 
+mkdir -p %{buildroot}/var/log/flashstart-hybrid-proc/
+
 %{genfilelist} %{buildroot} > %{name}-%{version}-filelist
 
 %files -f %{name}-%{version}-filelist
 %defattr(-,root,root)
 %dir %{_nseventsdir}/%{name}-update
 %dir %{_nsdbconfdir}/flashstart
+%dir /var/log/flashstart-hybrid-proc
+%config(noreplace) /etc/flashstart-hybrid/*
 %doc COPYING
+
+%post
+%systemd_post flashstart-hybrid.service
+
+%preun
+%systemd_preun flashstart-hybrid.service
+
+%postun
+%systemd_postun flashstart-hybrid.service
 
 %changelog

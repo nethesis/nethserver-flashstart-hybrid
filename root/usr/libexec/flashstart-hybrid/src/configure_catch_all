@@ -1,0 +1,24 @@
+#!/bin/sh
+
+#-------------------------------------------------------------
+# FLASHSTART HYBRID  - new_dns SCRIPTS
+#-------------------------------------------------------------
+# check call_jobs inlcude defined in fs_hybrid
+if [ "$INIT_SRC_INCLUDE" != "1" ]; then echo "call %SCRIPT_DIR%/%SCRIPT_FS% configure_catch_all"; exit; fi
+
+
+# log
+fn_log "$CALL_PROC" "$LOG_LABEL_INFO write file"
+
+# call new_dns on write only mode
+CHECK_RELOAD=$($SCRIPT_FS new_dns write_only)
+
+if [ "$CHECK_RELOAD" = "1" ]; then
+	# log
+	fn_log "$CALL_PROC" "$LOG_LABEL_INFO reload rules"
+
+	# call reload firewall rule
+	$SIGNAL_EVENT flashstarthybrid-configure-catch-all
+fi
+
+

@@ -1,0 +1,151 @@
+#!/bin/sh
+
+#-------------------------------------------------------------
+# FLASHSTART HYBRID  - send_object SCRIPTS
+#-------------------------------------------------------------
+# check call_jobs inlcude defined in fs_hybrid
+if [ "$INIT_SRC_INCLUDE" != "1" ]; then echo "call %SCRIPT_DIR%/%SCRIPT_FS% send_object"; exit; fi
+
+# check auth data
+if [ "$AUTH_EMAIL" == "" ]; then fn_log "$CALL_PROC" "Service Not Configured"; exit; fi
+
+# include function by function
+fn_include_func_file dns_utility
+
+# Declare function
+fn_clear_pending_events() {
+	# get type
+	local WHO=$1
+	
+	# init 
+	local API_DATA=""
+	local ROW_INS=""
+	# init counter
+	local COUNTER=0
+	
+	for line in $($PERL -e 'use FlashStartHybrid::NethServerObject; my @l = FlashStartHybrid::NethServerObject::session_db_compare("'$WHO'"); foreach my $e (@l) { print "$e->{where};$e->{event_data}\n"; }') ; do 
+		local WHERE=$(echo "$line" | cut -d ';' -f 1)
+		local EVENT_DATA=$(echo "$line" | cut -d ';' -f 2)
+		# Log
+		fn_log "$CALL_PROC" "$LOG_LABEL_INFO fn_clear_pending_events: $WHERE $EVENT_DATA"
+			
+		# execute event
+		if [ "$WHERE" == "api" ]; then
+			# replace space
+			ROW_INS=$(echo "$EVENT_DATA" | sed  "s/\^/ /g")
+			# add , if not first
+			if [ "$COUNTER" != "0" ]; then		
+				API_DATA=$API_DATA","		
+			fi
+			# set row
+			local API_DATA=$API_DATA"$ROW_INS"
+			 
+			# set counter
+			COUNTER=$[$COUNTER +1]
+			
+		elif [ "$WHERE" == "local" ]; then
+			# get data
+			local JOB_CODE=$(echo "$EVENT_DATA" | cut -d ',' -f 1 )			
+			local SETNAME=$(echo "$EVENT_DATA" | cut -d ',' -f 2)
+			local IP=$(echo "$EVENT_DATA" | cut -d ',' -f 3)
+			
+			# set job for function
+			local SEND_JOB=$(echo "$JOB_CODE" | sed "s/\_OBJ//g")
+			
+			# execute
+			local RESULT_JOB=$(fn_call_ipset "$SEND_JOB" "$SETNAME" "$IP")
+		
+			# set result	
+			local RESULT=$(echo "$RESULT_JOB" | tr -d '\r' | tr -d '\n')
+				
+			# Log
+			fn_log "$CALL_PROC" "$LOG_LABEL_INFO $JOB_CODE $WHO $SETNAME $IP [$RESULT]"
+		fi
+	done 
+	
+	if [ "$API_DATA" != "" ]; then
+	
+		# call API
+		local CALL_EVENTS=$(fn_call_api "$API_VERSION/sync/objects_events" "$AUTH_EMAIL" "POST" "[$API_DATA]")
+		
+		# check error
+		if [[ "$CALL_EVENTS" == "$API_RESPONSE_MESSAGE_ERROR"* ]]; then
+			# log error
+			fn_log "$CALL_PROC" "$LOG_LABEL_ERROR $CALL_EVENTS"	
+		else
+			# remove status code	# Line number;error;message
+			local LOG_CALL_EVENTS=$(fn_api_remove_status "$CALL_EVENTS")
+			
+			# log 
+			fn_log "$CALL_PROC" "$LOG_LABEL_INFO SEND objects_events $WHO: $LOG_CALL_EVENTS"
+		fi
+	fi	
+	
+}
+
+fn_send_obj_to_api() {
+	# get type
+	local WHO=$1
+	
+	# set api type [ 1 = host | 2 = group_host | 3 = range ]
+	local API_USER_TYPE
+	if [ "$WHO" == "host" ]; then
+		API_USER_TYPE=1
+	elif [ "$WHO" == "host_group" ]; then
+		API_USER_TYPE=2
+	elif [ "$WHO" == "iprange" ]; then
+		API_USER_TYPE=3
+	fi
+	
+	# get list
+	local OBJ=$($PERL -e 'use FlashStartHybrid::NethServerObject; my $t = FlashStartHybrid::NethServerObject::objs_to_api("'$WHO'"); print "$t";')
+
+	# call API
+	if [ "$OBJ" != "" ]; then
+		local CALL=$(fn_call_api "$API_VERSION/sync/objects" "$AUTH_EMAIL/$API_USER_TYPE" "POST" "[$OBJ]")
+	else 
+		local CALL=""
+	fi
+	
+	echo "$CALL"
+}
+
+
+# declare array object
+declare -A ARRAY_OBJECT
+# set order to send
+OBJ_LEN_ARRAY=${#ARRAY_OBJECT[@]}; ARRAY_OBJECT[$OBJ_LEN_ARRAY]="host"
+OBJ_LEN_ARRAY=${#ARRAY_OBJECT[@]}; ARRAY_OBJECT[$OBJ_LEN_ARRAY]="host_group"
+OBJ_LEN_ARRAY=${#ARRAY_OBJECT[@]}; ARRAY_OBJECT[$OBJ_LEN_ARRAY]="iprange"
+
+
+# for all key
+for ((i=0; i <= $((${#ARRAY_OBJECT[@]} - 1)); ++i))
+do
+	# get data
+	SEND_WHO="${ARRAY_OBJECT[$i]}"
+	
+	# check pending events
+	fn_clear_pending_events $SEND_WHO
+	
+	# call
+	CALL_SEND=$(fn_send_obj_to_api $SEND_WHO);
+	
+	if [ "$CALL_SEND" == "" ]; then 
+		# log only
+		fn_log "$CALL_PROC" "$LOG_LABEL_INFO SEND $SEND_WHO: Nothing to send"
+	else
+	
+		# check error
+		if [[ "$CALL_SEND" == "$API_RESPONSE_MESSAGE_ERROR"* ]]; then
+			# log error
+			fn_log "$CALL_PROC" "$LOG_LABEL_ERROR $CALL_SEND"	
+		else
+			# remove status code
+			LOG_CALL=$(fn_api_remove_status "$CALL_SEND")
+			
+			# log 
+			fn_log "$CALL_PROC" "$LOG_LABEL_INFO SEND $SEND_WHO: $LOG_CALL"
+		fi
+	fi
+done

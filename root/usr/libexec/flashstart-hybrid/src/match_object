@@ -1,0 +1,99 @@
+#!/bin/sh
+
+#-------------------------------------------------------------
+# FLASHSTART HYBRID  - match_object SCRIPTS
+#-------------------------------------------------------------
+# check call_jobs inlcude defined in fs_hybrid
+if [ "$INIT_SRC_INCLUDE" != "1" ]; then echo "call %SCRIPT_DIR%/%SCRIPT_FS% match_object"; exit; fi
+
+# include function by function
+fn_include_func_file dns_utility
+
+# get data
+CODE_JOB=$2				# action to be execute [ LOGIN_OBJ / LOGOUT_OBJ ]
+TYPE=$3					# object type [ host / host_group / iprange ]
+NAME=$4					# object name
+DNS=$5					# profile dns 
+
+if [ "$CODE_JOB" = "" -o "$TYPE" = "" -o "$NAME" = "" -o "$DNS" = "" ]; then
+	# set string
+	ERROR_LOG="$LOG_LABEL_ERROR Invalid parameter (CODE_JOB: $CODE_JOB - TYPE: $TYPE - NAME: $NAME - DNS: $DNS)"
+	
+	# log
+	fn_log "$CALL_PROC" "$ERROR_LOG"
+	# print
+	echo "$ERROR_LOG"
+	
+else
+	# execute LOGIN or LOGOUT
+	
+	# set var 
+	CHECK_CODE_JOB="LOGOUT_OBJ"
+	
+	# set job to send
+	SEND_JOB=$(echo $CODE_JOB | sed "s/_OBJ//g")
+	CHECK_SEND_JOB=$(echo $CHECK_CODE_JOB | sed "s/_OBJ//g")
+
+	# get setname
+	SETNAME=$($PERL -e 'use FlashStartHybrid::IpsetDNS; my $profile = FlashStartHybrid::IpsetDNS::return_search_profile("'$DNS'"); print $profile;')
+	
+	# log start
+	fn_log "$CALL_PROC" "$LOG_LABEL_INFO $CODE_JOB $TYPE $NAME - START"
+		
+	# execute by type 
+	if [ "$SEND_JOB" == "LOGIN" ]; then
+	
+		# if host > clear other ipset
+		if [ "$TYPE" == "host" ]; then
+			# clear session info
+			for line in $($PERL -e 'use FlashStartHybrid::NethServerObject; my @l = FlashStartHybrid::NethServerObject::session_host_reset("'$NAME'"); foreach my $e (@l) { print "$e->{name};$e->{ip};$e->{setname}\n"; }') ; do 
+				CHECK_NAME=$(echo "$line" | cut -d ';' -f 1)
+				CHECK_IP=$(echo "$line" | cut -d ';' -f 2)
+				CHECK_SETNAME=$(echo "$line" | cut -d ';' -f 3)
+				
+				# execute
+				CHECK_RESULT_JOB=$(fn_call_ipset "$CHECK_CODE_JOB" "$CHECK_SETNAME" "$CHECK_IP")
+			
+				# set result	
+				CHECK_RESULT=$(echo $CHECK_RESULT_JOB | tr -d '\r' | tr -d '\n')
+
+				# Log
+				fn_log "$CALL_PROC" "$LOG_LABEL_INFO $CHECK_CODE_JOB $TYPE $CHECK_NAME $CHECK_SETNAME $CHECK_IP [$CHECK_RESULT]"
+			done
+			
+			# check and remove from ipset for incongruity
+			CHECK_IPSET_IP=$($PERL -e 'use FlashStartHybrid::NethServerObject; my %s = FlashStartHybrid::NethServerObject::search("'$TYPE'", "'$NAME'"); if($s{"result"}==1){ print $s{"data"}->{ip}; };')
+			if [ "$CHECK_IPSET_IP" != "" ]; then
+				fn_check_remove_old_ipset "$CHECK_IPSET_IP"
+			fi		
+		fi		
+	
+		# get ip list from e-smith db
+		ARRAY_IP=(`$PERL -wMstrict -e 'use FlashStartHybrid::NethServerObject; my @t = FlashStartHybrid::NethServerObject::session_create("'$TYPE'", "'$NAME'", "'$SETNAME'"); print "@t";'`)
+	else
+		# get ip list session file
+		ARRAY_IP=(`$PERL -wMstrict -e 'use FlashStartHybrid::NethServerObject; my @t = FlashStartHybrid::NethServerObject::session_delete("'$TYPE'", "'$NAME'", "'$SETNAME'"); print "@t";'`)
+	fi
+	
+	# for all ip
+	for ((i=0; i <= $((${#ARRAY_IP[@]} - 1)); ++i)) do 
+		
+		# set ip
+		IP="${ARRAY_IP[$i]}"
+		echo $IP
+		if [ "$IP" != "" ]; then
+			# execute
+			RESULT_JOB=$(fn_call_ipset "$SEND_JOB" "$SETNAME" "$IP")
+		
+			# set result	
+			RESULT=$(echo $RESULT_JOB | tr -d '\r' | tr -d '\n')
+	
+			# Log
+			fn_log "$CALL_PROC" "$LOG_LABEL_INFO $CODE_JOB $TYPE $NAME $SETNAME $IP [$RESULT]"
+		fi
+		
+	done
+	
+	# log end
+	fn_log "$CALL_PROC" "$LOG_LABEL_INFO $CODE_JOB $TYPE $NAME - END"
+fi

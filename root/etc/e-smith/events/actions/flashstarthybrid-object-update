@@ -1,0 +1,10 @@
+#!/bin/bash
+
+# include bootstrap for initialize global var
+source /usr/libexec/flashstart-hybrid/bootstrap.var
+
+# info for this action
+# ln -s ../actions/flashstarthybrid-object-update S99flashstarthybrid-object-update
+
+# send object to API
+$SCRIPT_FS send_object

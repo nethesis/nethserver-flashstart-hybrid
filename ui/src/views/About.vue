@@ -52,7 +52,7 @@ export default {
         ["system-apps/read"],
         {
           action: "info",
-          name: "nethserver-flashstart"
+          name: "nethserver-flashstart-hybrid"
         },
         null,
         function(success) {

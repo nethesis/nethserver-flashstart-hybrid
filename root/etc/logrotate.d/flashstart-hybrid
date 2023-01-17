@@ -1,0 +1,5 @@
+/var/log/flashstart-hybrid.log {
+    copytruncate
+    compress
+    missingok
+}

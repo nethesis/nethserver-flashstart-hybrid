@@ -1,0 +1,95 @@
+#!/bin/sh
+
+#-------------------------------------------------------------
+# FLASHSTART HYBRID  - software_update SCRIPTS
+#-------------------------------------------------------------
+# check call_jobs inlcude defined in fs_hybrid
+if [ "$INIT_SRC_INCLUDE" != "1" ]; then echo "call %SCRIPT_DIR%/%SCRIPT_FS% software_update"; exit; fi
+
+exit;
+# get data
+VERSION=$2
+
+# set version 
+UPDATE_TO=$FSSW_RPM_NAME"-"$VERSION"-1.el7.x86_64"
+
+# if not DEV
+if [ "$FS_DEV" == "0" ]; then
+
+	$YUM clean all
+		
+	# check version
+	if [ "$VERSION" != "" ]; then
+		# if sended version, I install the required version
+		
+		# Check version
+		MY_VERSION=$(fn_software_get_version)
+		
+		if [ "$MY_VERSION" == "$VERSION" ]; then
+			
+			# set log label
+			YUM_LOG_LABEL="Call YUM Reinstall $UPDATE_TO"
+		
+			# Log response
+			fn_log "$CALL_PROC" "$LOG_LABEL_INFO $YUM_LOG_LABEL"
+		
+			# execute
+			CALL_YUM=$($YUM reinstall -y $UPDATE_TO)
+			
+		else
+		
+			# set log label
+			YUM_LOG_LABEL="Call YUM Install $UPDATE_TO"
+		
+			# Log response
+			fn_log "$CALL_PROC" "$LOG_LABEL_INFO $YUM_LOG_LABEL"
+		
+			# execute
+			CALL_YUM=$($YUM install -y $UPDATE_TO)
+						
+		fi
+		
+	else
+		# if don't send version, update to last version
+		
+		# set log label
+		YUM_LOG_LABEL="Call YUM Update $FSSW_RPM_NAME"
+				
+		# Log response
+		fn_log "$CALL_PROC" "$LOG_LABEL_INFO $YUM_LOG_LABEL"
+				
+		# execute
+		CALL_YUM=$($YUM update -y $FSSW_RPM_NAME)
+		
+	fi
+	
+	# check result
+	CHECK_YUM=$(echo "$CALL_YUM" | grep "Complete!" | wc -l)
+	if [ "$CHECK_YUM" == "0" ]; then 
+		RESPONSE_YUM="ERROR - $CALL_YUM"
+	else
+		RESPONSE_YUM="Complete!"
+		
+		# Check version
+		MY_NEW_VERSION=$(fn_software_get_version)
+		
+		# send new data to API		
+		SEND_NEW_DATA='{"type":"'$FSSW_TYPE'","sys_type":"'$FSSW_SYSTYPE'","version":"'$MY_NEW_VERSION'"}'
+		CALL_NEW_UPDATE=$(fn_call_api "$API_VERSION/updates/check" "$AUTH_EMAIL" "POST" "$SEND_NEW_DATA")
+		#-------------------------------
+	fi
+	
+	# Log response
+	fn_log "$CALL_PROC" "$LOG_LABEL_INFO $YUM_LOG_LABEL - Response $RESPONSE_YUM"
+		
+else
+	# check version
+	if [ "$VERSION" != "" ]; then
+		YUM_LOG_LABEL="Call YUM Install $UPDATE_TO"
+	else
+		YUM_LOG_LABEL="Call YUM Update"
+	fi
+	# Log response
+	fn_log "$CALL_PROC" "$LOG_LABEL_INFO $YUM_LOG_LABEL - Disabled on DEV"
+fi
+

@@ -1,0 +1,119 @@
+#!/bin/sh
+
+#-------------------------------------------------------------
+# FLASHSTART HYBRID  - software_update_check SCRIPTS
+#-------------------------------------------------------------
+# check call_jobs inlcude defined in fs_hybrid
+if [ "$INIT_SRC_INCLUDE" != "1" ]; then echo "call %SCRIPT_DIR%/%SCRIPT_FS% software_update_check"; exit; fi
+
+# check auth data
+if [ "$AUTH_EMAIL" == "" ]; then fn_log "$CALL_PROC" "Service Not Configured"; exit; fi
+
+# get var
+SEND_ONLY_DATA=$2		# Send only data, used after updated [ 0 = send data and call yum if older version (default) | 1 = send only data ]
+IGNORE_API_RESULT=$3	# Ignore check api and execute yum, used by job [ 0 = not ignore (default) | 1 = ignore and execute yum ]
+
+if [ "$SEND_ONLY_DATA" == "" ]; then SEND_ONLY_DATA=0; fi
+if [ "$IGNORE_API_RESULT" == "" ]; then IGNORE_API_RESULT=0; fi
+
+#-------------------------------
+# GET INFO
+#-------------------------------
+# get software version
+MY_VERSION=$(fn_software_get_version)
+
+# set var for call fix procedure on 1.0.1 version
+if [ "$MY_VERSION" == "1.0.1" -o "$MY_VERSION" == "1.0.2" ] && [ "$SEND_ONLY_DATA" == "0" ]; then
+	# Log response
+	fn_log "$CALL_PROC" "$LOG_LABEL_INFO Call software_fix_version"
+	# call
+	$SCRIPT_FS software_fix_version
+	
+	# get software version
+	MY_VERSION=$(fn_software_get_version)
+fi
+
+#-------------------------------
+# CREATE ARRAY UPDATE
+#-------------------------------
+# init array
+declare -A ARRAY_UPDATE
+
+# add TYPE
+LEN_ARRAY=${#ARRAY_UPDATE[@]};
+ARRAY_UPDATE[$LEN_ARRAY]="type;"$FSSW_TYPE
+
+# add SYSTYPE
+LEN_ARRAY=${#ARRAY_UPDATE[@]};
+ARRAY_UPDATE[$LEN_ARRAY]="sys_type;"$FSSW_SYSTYPE
+
+# add VERSION
+LEN_ARRAY=${#ARRAY_UPDATE[@]};
+ARRAY_UPDATE[$LEN_ARRAY]="version;"$MY_VERSION
+
+#-------------------------------
+# CREATE VAR DATA TO SEND
+#-------------------------------
+# init var
+SEND_DATA="{"
+	for ((i=0; i <= $((${#ARRAY_UPDATE[@]} - 1)); ++i))
+		do
+			# get data
+			KEY=$i
+			CODE=$(echo "${ARRAY_UPDATE[$KEY]}" | cut -d ';' -f 1)
+			VALUE=$(echo "${ARRAY_UPDATE[$KEY]}" | cut -d ';' -f 2)
+			
+			# add separator
+			if [ "$KEY" != "0" ]; then 
+				# set data
+				SEND_DATA=$SEND_DATA","
+			fi
+			
+			# set data
+			SEND_DATA=$SEND_DATA"\""$CODE"\":\""$VALUE"\""			
+	done
+# close data
+SEND_DATA=$SEND_DATA"}"
+
+#-------------------------------
+# SEND
+#-------------------------------
+# call API
+CALL_UPDATE=$(fn_call_api "$API_VERSION/updates/check" "$AUTH_EMAIL" "POST" "$SEND_DATA")
+
+# check result
+if [[ "$CALL_UPDATE" == "$API_RESPONSE_MESSAGE_ERROR"* ]]; then
+  # log error
+  fn_log "$CALL_PROC" "$LOG_LABEL_ERROR $CALL_UPDATE"
+else
+
+	# set response	[SENDED;AVAILABLE;REQUIRE_UPDATE;UPDATE_MANUAL;]
+	RESPONSE_DATA=$(fn_json_trim "$CALL_UPDATE")
+	RESPONSE_LOG=$(fn_api_remove_status "$RESPONSE_DATA")
+	
+	# set response data
+	VERSION_SENDED=$(echo "$RESPONSE_LOG" |  cut -d ';' -f 1 )
+	UPDATE_VERSION=$(echo "$RESPONSE_LOG" |  cut -d ';' -f 2 )
+	UPDATE_REQUIRED=$(echo "$RESPONSE_LOG" |  cut -d ';' -f 3 )
+	
+	# check ignore result
+	if [ "$IGNORE_API_RESULT" == "1" ]; then  
+		# set required
+		UPDATE_REQUIRED=1; 
+		# remove version
+		UPDATE_VERSION=""
+	fi
+	
+	# set label
+	LABEL_REQUIRED=$(if [ "$UPDATE_REQUIRED" == "1" ]; then echo "REQUIRED"; else echo "NOT_REQUIRED"; fi)
+		
+	# Log response
+	fn_log "$CALL_PROC" "$LOG_LABEL_INFO $LABEL_REQUIRED [$RESPONSE_LOG]"
+	
+	# if update required 
+	if [ "$UPDATE_REQUIRED" == "1" ] && [ "$SEND_ONLY_DATA" == "0" ]; then
+		# call update
+		$SCRIPT_FS software_update "$UPDATE_VERSION"
+	fi
+	
+fi

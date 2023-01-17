@@ -1,0 +1,171 @@
+#!/bin/sh
+
+#-------------------------------------------------------------
+# FLASHSTART HYBRID - BACKGROUND SCRIPTS
+#-------------------------------------------------------------
+
+# include bootstrap for initialize global var
+source /usr/libexec/flashstart-hybrid/bootstrap.var
+
+# check procedure log directory
+if [ ! -d "$PROCEDURE_LOG_DIR" ]; then
+	mkdir $PROCEDURE_LOG_DIR
+fi
+
+
+# check loopback interface
+CHECK_LO=$($IFCONFIG -s | grep "lo:" | wc -l)
+if [ "$CHECK_LO" == 0 ]; then
+	# call init
+	$SCRIPT_FS init	
+else
+	# call init jobs only with file reset
+	$SCRIPT_FS init_jobs 1	
+fi
+
+# send version to FlashStart
+$SCRIPT_FS software_update_check 1
+
+# call nethserver auth ip
+if [ "$FS_DEV" != "1" ]; then
+	if [ -f $ESMITH_ACTIONS_FS_AUTH -a "$AUTH_EMAIL" != "" ]; then	$ESMITH_ACTIONS_FS_AUTH; fi
+fi
+
+
+# stop service if other fsdaemon process in background
+CURRENT_PID=$(echo $$)
+CHECK_PROCESS=$(pgrep fsdaemon)
+COUNT_PROCESS=$(pgrep fsdaemon | wc -l)
+# log
+fn_log "SERVICE $SERVICE_FS" "CURRENT_PID: $CURRENT_PID"
+# check duplicate
+if [ $COUNT_PROCESS -gt 1 ]; then
+	# for all process
+	for process in $CHECK_PROCESS; do 	
+		# if not is this
+		if [ "$process" != "$CURRENT_PID" ]; then 
+			# kill
+			$KILL $process
+			# log 
+			fn_log "SERVICE $SERVICE_FS" "KILL OLDER: $process"
+		fi
+	done 
+fi
+
+# log
+fn_log "SERVICE $SERVICE_FS" "START"
+
+
+# get timing
+fn_get_queue_timing
+
+#----------------------------------
+# set procedure for background process.
+#----------------------------------
+source $PATH_LIB/fsdaemon.array
+#----------------------------------
+
+# execute background
+while [ 1 ] ;
+sleep $BACKGROUND_TIME
+do
+
+	# check if temp file exists
+	if [ -f $RELOAD_QUEUE_TIMING ]; then 
+		# reset timin
+		fn_get_queue_timing
+		# remove file
+		rm -f $RELOAD_QUEUE_TIMING
+	fi
+	
+	# for all queue
+	for ((daemon_i=0; daemon_i <= $((${#ARRAY_QUEUE[@]} - 1)); ++daemon_i))
+	do
+		# get data
+		KEY=$daemon_i
+		QUEUE_PROC=$(echo "${ARRAY_QUEUE[$KEY]}" | cut -d ';' -f 1)
+		QUEUE_CODE=$(echo "${ARRAY_QUEUE[$KEY]}" | cut -d ';' -f 2)
+		QUEUE_BACKGROUND=$(echo "${ARRAY_QUEUE[$KEY]}" | cut -d ';' -f 3)
+			# check background
+			if [ "$QUEUE_BACKGROUND" == "" ]; then QUEUE_BACKGROUND=1; fi
+		
+		# get timing
+		QUEUE_TIME=$(fn_return_queue_timing $QUEUE_CODE)
+		
+		# init 
+		QUEUE_SKIP=0
+		# check not execute
+		if [ "$QUEUE_TIME" == "0" ]; then
+			# set 
+			QUEUE_SKIP=1
+			
+			# get default configuration 
+			QUEUE_TIME=$($PERL -E 'use FlashStartHybrid::QueueTiming; my $search = FlashStartHybrid::QueueTiming::search_default_config("'$QUEUE_CODE'"); print "$search"; ')
+		fi
+		
+		# get last execution
+		QUEUE_LAST=$(echo "${ARRAY_QUEUE_TIME[$KEY]}")
+		
+		# set now time
+		QUEUE_NOW=$(date +%s)
+		
+		# remove from queue time the background time
+		QUEUE_TIME=$(( $QUEUE_TIME - $BACKGROUND_TIME ))
+		
+		# check if fist time
+		if [ "$QUEUE_LAST" = "" ]; then
+			# set DIFF_LAST for execute now
+			DIFF_LAST=$(( $QUEUE_TIME + 1 ))
+		else
+			# get time difference
+			DIFF_LAST=$(( $QUEUE_NOW - $QUEUE_LAST ))
+			# check changed date
+			if [ "$DIFF_LAST" -lt "0" ]; then
+				# set DIFF_LAST for execute now
+				DIFF_LAST=$(( $QUEUE_TIME + 1 ))
+				# log
+				fn_log "SERVICE $SERVICE_FS" "Changed date - reset time difference "	
+			fi
+		fi
+		
+		# check if time difference from now to last exection is greater than procedure exection time
+		if [ "$DIFF_LAST" -gt "$QUEUE_TIME" ]; then
+		
+			# check not execute
+			if [ "$QUEUE_SKIP" == "1" ]; then
+				# update last exectuon
+				ARRAY_QUEUE_TIME[$KEY]=$QUEUE_NOW
+				
+				# log
+				fn_log "SERVICE $SERVICE_FS" "$QUEUE_PROC SKIP ($QUEUE_CODE Time = 0)"
+			else
+				# set process to be execute
+				PROC_EXE="$QUEUE_PROC"
+								
+				# update last exectuon
+				ARRAY_QUEUE_TIME[$KEY]=$QUEUE_NOW
+				
+				# set description
+				DESC_LOG=""
+				if [ "$QUEUE_BACKGROUND" = "0" ]; then DESC_LOG=" [fast]"; fi
+				
+				# log
+				fn_log "SERVICE $SERVICE_FS" "$QUEUE_PROC START$DESC_LOG"
+				
+				if [ "$QUEUE_BACKGROUND" == "1" ]; then
+					# call procedure 
+					$SCRIPT_FS $PROC_EXE 
+				else
+					# call procedure - doesn't wait for input
+					$SCRIPT_FS $PROC_EXE > /dev/null &
+				fi
+				
+				# log
+				fn_log "SERVICE $SERVICE_FS" "$QUEUE_PROC END"				
+			fi
+		fi
+		
+	done
+	
+done
+

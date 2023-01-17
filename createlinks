@@ -34,14 +34,8 @@ event_actions($event, qw(
 ));
 
 event_templates($event, qw(
-      /etc/squid/squid.conf
       /etc/cron.d/flashstart-auth-ip
-      /etc/unbound/conf.d/flashstart.conf
-));
-
-event_services($event, qw(
-      squid restart
-      unbound restart
+      /etc/cron.d/flashstart-hybrid
 ));
 
 #
@@ -51,21 +45,14 @@ event_services($event, qw(
 $event = 'nethserver-flashstart-hybrid-save';
 
 event_actions($event, qw(
+      flashstarthybrid-init 40
       firewall-adjust 60
       nethserver-flashstart-auth-ip 70
 ));
 
 event_templates($event, qw(
-      /etc/squid/squid.conf
       /etc/cron.d/flashstart-auth-ip
-      /etc/unbound/conf.d/flashstart.conf
 ));
-
-event_services($event, qw(
-      squid restart
-      unbound restart
-));
-
 
 #
 # wan-uplink-update event
@@ -84,14 +71,39 @@ event_actions($event, qw(
 
 $event = 'interface-update';
 
-event_templates($event, qw(
-      /etc/unbound/conf.d/flashstart.conf
-));
-
 event_actions($event, qw(
+      flashstarthybrid-send-settings 90
       nethserver-flashstart-hybrid-auth-ip 90
 ));
 
-event_services($event, qw(
-      unbound restart
+# 
+# flashstarthybrid-dns-update
+#
+
+$event = 'flashstarthybrid-dns-update';
+
+event_actions($event, qw(
+      flashstarthybrid-restart-dnsmasq 30
+      firewall-adjust 40
+));
+
+# 
+# flashstarthybrid-zone-update
+#
+
+$event = 'flashstarthybrid-zone-update';
+
+event_actions($event, qw(
+      flashstarthybrid-restart-dnsmasq 30
+      flashstarthybrid-expand-dnsmasq 40
+));
+
+#
+# firewall-adjust
+#
+
+$event = 'firewall-adjust';
+
+event_actions($event, qw(
+      flashstarthybrid-object-update 90
 ));

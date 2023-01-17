@@ -48,7 +48,6 @@ configure Flashstart and enable access to Unbound:
 
 ```
 config setprop flashstart status enabled
-config setprop unbound access $(config getprop flashstart Roles)
 config setprop flashstart Password <pass>
 config setprop flashstart Username <user>
 
@@ -68,16 +67,6 @@ If you need to notify a public IP has change, execute:
 ```
 /etc/e-smith/events/actions/nethserver-flashstart-hybrid-auth-ip
 ```
-
-## Testing
-
-Execute a DNS query using unbound:
-
-```
-dig -t A +noall +answer <domain> @localhost -p $(config getprop unbound UDPPort)
-```
-
-If ``<domain>`` is blocked, the server will respond ``188.94.192.215`` or ``45.76.84.187``.
 
 ## Cockpit API
 

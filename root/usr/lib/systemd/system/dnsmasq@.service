@@ -1,0 +1,10 @@
+[Unit]
+Description=DNS caching server - Configuration %i.
+After=network.target
+
+[Service]
+ExecStartPre=/usr/libexec/flashstart-hybrid/expand-dnsmasq-instance %i
+ExecStart=/usr/sbin/dnsmasq -k --conf-file=/etc/dnsmasq-%i.conf
+
+[Install]
+WantedBy=multi-user.target

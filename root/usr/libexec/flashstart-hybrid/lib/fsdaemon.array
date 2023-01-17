@@ -1,0 +1,38 @@
+#!/bin/sh
+
+#-------------------------------------------------------------
+# FLASHSTART HYBRID - SET ARRAY QUEUE
+#-------------------------------------------------------------
+
+# set queue for background process
+declare -A ARRAY_QUEUE
+declare -A ARRAY_QUEUE_TIME
+
+#----------------------------------
+# set procedure for background process.
+#----------------------------------
+#	ARRAY_QUEUE[$QUEUE_LEN_ARRAY]="Procedure_NAME;Procedure_TIMING_CODE;Procedure_BACKGROUND [ 1 = yes (wait for execution - default) | 0 = no (runs in a separate process) ]"
+# 	If NO background procedure add param 0 at the end, es
+#	ARRAY_QUEUE[$QUEUE_LEN_ARRAY]="Procedure_NAME;Procedure_TIMING;0"
+
+
+# add clear sessions
+QUEUE_LEN_ARRAY=${#ARRAY_QUEUE[@]}; 
+	ARRAY_QUEUE[$QUEUE_LEN_ARRAY]="clear_sessions;SESS_CLEAR;1"
+	ARRAY_QUEUE_TIME[$QUEUE_LEN_ARRAY]=""
+	
+# add call jobs	
+QUEUE_LEN_ARRAY=${#ARRAY_QUEUE[@]}; 
+	ARRAY_QUEUE[$QUEUE_LEN_ARRAY]="call_jobs;JOB;1"
+	ARRAY_QUEUE_TIME[$QUEUE_LEN_ARRAY]=""
+
+# add admin execute command procedure
+QUEUE_LEN_ARRAY=${#ARRAY_QUEUE[@]}; 
+	ARRAY_QUEUE[$QUEUE_LEN_ARRAY]="admin_execute;ADMINEXECUTE;1"
+	ARRAY_QUEUE_TIME[$QUEUE_LEN_ARRAY]=""
+	
+# add send statistics
+QUEUE_LEN_ARRAY=${#ARRAY_QUEUE[@]}; 
+	ARRAY_QUEUE[$QUEUE_LEN_ARRAY]="send_stats;SENDSTATS;1"
+	ARRAY_QUEUE_TIME[$QUEUE_LEN_ARRAY]=""
+	

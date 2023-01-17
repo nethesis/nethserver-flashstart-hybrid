@@ -1,0 +1,89 @@
+#!/bin/sh
+
+# set var check
+INIT_FN_dns_utility=1
+#-------------------------------------------------------------
+# FLASHSTART HYBRID - DNS UTILITY FUNCTIONS
+#-------------------------------------------------------------
+# Contains the functions for named, ipset, zone, etc.
+
+fn_call_ipset() {
+	# get data
+	ACTION=$1				# action [ ADD / REMOVE ]
+	SETNAME=$2				# ipset setname
+	IP=$3					# ip
+	
+	# init
+	local RESULT_JOB="error"
+	
+	# set command
+	if [ "$ACTION" == "LOGIN" ]; then	
+		COMMAND="-A"
+	else
+		COMMAND="-D"
+	fi
+	
+	# add
+	RESULT_JOB=$($IPSET $COMMAND $SETNAME $IP 2>&1 >/dev/null)
+	if [ "$RESULT_JOB" = "" ]; then RESULT_JOB="executed"; fi
+	
+	echo $RESULT_JOB
+}
+
+fn_clear_ipset_and_session() {
+	# get procedure
+	local PROC_NAME=$1
+	
+	# remove session file
+	$PERL -e 'use FlashStartHybrid::NethServerObject; my $t = FlashStartHybrid::NethServerObject::clear_session_file();'
+	fn_log "$PROC_NAME" "$LOG_LABEL_INFO session clear file"
+		
+	# get setname suffix
+	SETNAME_LABEL=$($PERL -e 'use FlashStartHybrid::IpsetDNS; my $t = FlashStartHybrid::IpsetDNS::get_config("setname_label"); print "$t"; ')
+	
+	# remove all set name
+	for setname in $($IPSET list -name | grep $SETNAME_LABEL) ; do	
+
+		# remove all ip in set name
+		for ip_line in $($IPSET list $setname -output xml | grep "<member><elem>" ); do
+			#get data
+			IP=$(echo $ip_line | tr -d '</elem></member>' | tr -d '<member><elem>')
+			
+			# call job
+			RESULT_JOB=$(fn_call_ipset "LOGOUT" "$setname" "$IP")
+			if [ "$RESULT_JOB" = "" ]; then RESULT_JOB="executed"; fi
+			# Log	
+			fn_log "$PROC_NAME" "$LOG_LABEL_INFO ipset delete $setname $IP [$RESULT_JOB]"
+		done
+		
+	done
+}
+
+fn_check_remove_old_ipset() {
+	# get data	
+	local IP=$1					# ip
+		
+	local OLD_SETNAME
+	
+	local CHECK=$($IPSET -L -output save | grep "PROFILE-" | grep add | grep "$IP" | wc -l)
+	
+	if [ "$CHECK" == "1" ]; then
+		OLD_SETNAME=$($IPSET -L -output save | grep "PROFILE-" | grep add | grep "$IP" | cut -d ' ' -f2)
+		
+		# call
+		local CALL=$(fn_call_ipset LOGOUT $OLD_SETNAME $IP)		
+	fi
+	
+	echo $OLD_SETNAME
+}
+
+
+
+fn_clear_log() {
+# use this for chanck and include function file
+
+	# reset log file
+    echo > $DNSSRV_LOG_FILE
+	
+
+}

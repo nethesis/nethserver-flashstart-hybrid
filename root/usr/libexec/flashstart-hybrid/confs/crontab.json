@@ -1,0 +1,13 @@
+{
+	
+	"system_check": {"minute": "1", "hour": "*/1" },
+	
+	
+	
+	
+	"___comment___": "add object with procedure_code and option value before ",
+	"___comment___": "put data as:",
+	"___comment___": "  (insert double quotes in key, procedure name and string value)",
+	"___comment___": "  (the system puts * on the key not present)",
+	"___comment___": "procedure: {minute => minute (0 - 59), hour => hour (0 - 23), month_day => day of month (1 - 31), month => month (1 - 12), week_day => day of week (0 - 6) }"	
+}

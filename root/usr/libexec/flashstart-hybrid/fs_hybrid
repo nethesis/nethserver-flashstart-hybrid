@@ -1,0 +1,174 @@
+#!/bin/sh
+
+#-------------------------------------------------------------
+# FLASHSTART HYBRID - HOME SCRIPTS
+#-------------------------------------------------------------
+
+# include bootstrap for initialize global var
+source /usr/libexec/flashstart-hybrid/bootstrap.var
+
+# init INCLUDE VAR (to not run the script directly)
+INIT_SRC_INCLUDE=1
+
+# init error and message var
+GLOBAL_ERROR=0
+GLOBAL_MSG=""
+
+#-------------------------------------------------------------
+# call procedures
+#-------------------------------------------------------------
+# get procedure list in src
+PRECURE_ARRAY=$(ls $PATH_SRC)
+PRECURE_LIST=$(fn_join , ${PRECURE_ARRAY[@]})
+# set procure name
+CALL_PROC=$1
+
+# create procedure log file
+fn_log_procedure_init "$CALL_PROC"
+
+# call
+case "$1" in
+	init)
+      #-------------------------------------------------------------
+      # call $(init) 
+	  # 	Initializes the named files and loopback interfaces
+      #-------------------------------------------------------------	  
+      # include script file
+      source $PATH_SRC/init
+    ;;
+	
+	call_jobs)
+      #-------------------------------------------------------------
+      # call $(call_jobs) 
+	  # 	Call API job list
+      #-------------------------------------------------------------	  
+      # include script file
+      source $PATH_SRC/call_jobs
+    ;;
+	
+	admin_execute)
+      #-------------------------------------------------------------
+      # call $(admin_execute) 
+	  # 	Check exists admin command
+      #-------------------------------------------------------------	  
+      # include script file
+      source $PATH_SRC/admin_execute
+    ;;
+	
+	match_clients)
+      #-------------------------------------------------------------
+      # call $(match_clients) 
+	  # 	Login or Logout action 
+      #-------------------------------------------------------------	  
+      # include script file
+      source $PATH_SRC/match_clients
+    ;;
+	
+	match_object)
+      #-------------------------------------------------------------
+      # call $(match_object) 
+	  # 	Login or Logout for firewall object 
+      #-------------------------------------------------------------	  
+      # include script file
+      source $PATH_SRC/match_object
+    ;;
+	
+	send_object)
+      #-------------------------------------------------------------
+      # call $(send_object) 
+	  # 	Send firewall object to API
+      #-------------------------------------------------------------	  
+      # include script file
+      source $PATH_SRC/send_object
+    ;;
+	
+	clear_sessions)
+      #-------------------------------------------------------------
+      # call $(clear_sessions) 
+	  # 	Check log, remove session and clear bind
+      #-------------------------------------------------------------	  
+      # include script file
+      source $PATH_SRC/clear_sessions
+    ;;
+	
+	init_jobs)
+      #-------------------------------------------------------------
+      # call $(init_jobs) 
+	  # 	Call API and initializes all jobs (login/logout)
+      #-------------------------------------------------------------	  
+      # include script file
+      source $PATH_SRC/init_jobs
+    ;;
+	
+	zone)
+      #-------------------------------------------------------------
+      # call $(zone) 
+	  # 	Change zone
+      #-------------------------------------------------------------	  
+      # include script file
+      source $PATH_SRC/zone
+    ;;
+	
+	send_stats)
+      #-------------------------------------------------------------
+      # call $(send_stats) 
+	  # 	Send device statistics
+      #-------------------------------------------------------------	  
+      # include script file
+      source $PATH_SRC/send_stats
+    ;;
+	
+	new_dns)
+      #-------------------------------------------------------------
+      # call $(new_dns) 
+	  # 	Add new DNS to configuration
+      #-------------------------------------------------------------	  
+      # include script file
+      source $PATH_SRC/new_dns
+    ;;
+		
+	configure_catch_all)
+      #-------------------------------------------------------------
+      # call $(configure_catch_all) 
+	  # 	Change catch-all profile
+	  #-------------------------------------------------------------	  
+      # include script file
+      source $PATH_SRC/configure_catch_all
+    ;;
+	
+	software_update_check)
+      #-------------------------------------------------------------
+      # call $(software_update_check) 
+	  # 	Check update
+      #-------------------------------------------------------------	  
+      # include script file
+      source $PATH_SRC/software_update_check
+    ;;
+	
+	software_update)
+      #-------------------------------------------------------------
+      # call $(software_update) 
+	  # 	Execute update
+      #-------------------------------------------------------------	  
+      # include script file
+      source $PATH_SRC/software_update
+    ;;
+	
+	system_check)
+      #-------------------------------------------------------------
+      # call $(system_check) 
+	  # 	Check System and send data to API
+      #-------------------------------------------------------------	  
+      # include script file
+      source $PATH_SRC/system_check
+    ;;
+	
+	 *)
+      echo ""
+      echo $"Usage: $0 {$PRECURE_LIST}"
+      echo ""
+      exit 1
+    ;;
+esac
+
+exit

@@ -1,0 +1,47 @@
+#!/bin/sh
+
+#-------------------------------------------------------------
+# FLASHSTART HYBRID  - match_clients SCRIPTS
+#-------------------------------------------------------------
+# check call_jobs inlcude defined in fs_hybrid
+if [ "$INIT_SRC_INCLUDE" != "1" ]; then echo "call %SCRIPT_DIR%/%SCRIPT_FS% match_clients"; exit; fi
+
+# include function by function
+fn_include_func_file dns_utility
+
+# get data
+CODE_JOB=$2				# action to be execute [ LOGIN / LOGOUT ]
+IP=$3					# ip client
+DNS=$4					# profile dns 
+LOG=$5					# change log file [ 0 (default) / 1 = put or remove session ]
+USER=$6					# user logged, only if LOG = 1
+START_EPOCH=$7			# session start (epoch format), only if LOG = 1
+
+if [ "$CODE_JOB" = "" -o "$IP" = "" -o "$DNS" = "" ]; then
+	# set string
+	ERROR_LOG="$LOG_LABEL_ERROR Invalid parameter (CODE_JOB: $CODE_JOB - IP: $IP - DNS: $DNS)"
+	
+	# log
+	fn_log "$CALL_PROC" "$ERROR_LOG"
+	# print
+	echo "$ERROR_LOG"
+	
+else
+	# execute LOGIN or LOGOUT
+	
+	# check log param
+	CHANGE_LOG=$(if [ "$LOG" = "1" ]; then echo 1; else echo 0; fi)
+	
+	# get setname
+	SETNAME=$($PERL -e 'use FlashStartHybrid::IpsetDNS; my $profile = FlashStartHybrid::IpsetDNS::return_search_profile("'$DNS'"); print $profile;')
+	
+	# execute
+	RESULT_JOB=$(fn_call_ipset "$CODE_JOB" "$SETNAME" "$IP")
+	
+	# set result	
+	RESULT=$(echo $RESULT_JOB | tr -d '\r' | tr -d '\n')
+	
+	# Log
+    fn_log "$CALL_PROC" "$LOG_LABEL_INFO $CODE_JOB $SETNAME $IP [$RESULT]"	
+	
+fi

@@ -1,0 +1,32 @@
+#!/bin/sh
+
+#-------------------------------------------------------------
+# FLASHSTART HYBRID  - configure_queue_timing SCRIPTS
+#-------------------------------------------------------------
+# check call_jobs inlcude defined in fs_hybrid
+if [ "$INIT_SRC_INCLUDE" != "1" ]; then echo "call %SCRIPT_DIR%/%SCRIPT_FS% configure_queue_timing"; exit; fi
+
+# call API
+API_QUEUE=$(fn_call_api "$API_VERSION/device/get_config" "$AUTH_EMAIL" "GET" "*" "*" "application/json")
+
+if [[ "$API_QUEUE" == "$API_RESPONSE_MESSAGE_ERROR"* ]]; then
+  # log error
+  fn_log "$CALL_PROC" "$LOG_LABEL_ERROR $API_QUEUE"
+  
+else 
+	# parse and quote json
+	RESPONSE_QUEUE=$(fn_api_remove_status "$API_QUEUE")
+	SEND_QUEUE=$(fn_json_quote "$RESPONSE_QUEUE")
+	
+	# set log
+	fn_log "$CALL_PROC" "$LOG_LABEL_INFO Update file"
+	# Create file
+	CHANGE_CUSTOM_QUEUE=$($PERL -e 'use FlashStartHybrid::QueueTiming; my $changed = FlashStartHybrid::QueueTiming::set_config("'$SEND_QUEUE'"); print $changed;')
+	
+	# set log
+	fn_log "$CALL_PROC" "$LOG_LABEL_INFO New settings ($CHANGE_CUSTOM_QUEUE)"
+	
+	# create temp file to reload queue configuration
+	touch $RELOAD_QUEUE_TIMING
+	
+fi
