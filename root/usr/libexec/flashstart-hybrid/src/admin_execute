@@ -63,12 +63,6 @@ execute_procedure() {
 		fi
 	
 	
-	elif [ "$PROCEDURE" == "update" ]; then 
-		# call update with api check ignore
-		$SCRIPT_FS software_update 0 1
-		# set log
-		LOG_PROCEDURE="CALL YUM UPDATE"
-	
 	elif [ "$PROCEDURE" == "event" ]; then 
 		# split param list
 		CODE_JOB=$(echo "$PARAM" | cut -d ';' -f 1)

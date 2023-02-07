@@ -135,16 +135,7 @@ case "$1" in
       # include script file
       source $PATH_SRC/software_update_check
     ;;
-	
-	software_update)
-      #-------------------------------------------------------------
-      # call $(software_update) 
-	  # 	Execute update
-      #-------------------------------------------------------------	  
-      # include script file
-      source $PATH_SRC/software_update
-    ;;
-	
+		
 	system_check)
       #-------------------------------------------------------------
       # call $(system_check) 
