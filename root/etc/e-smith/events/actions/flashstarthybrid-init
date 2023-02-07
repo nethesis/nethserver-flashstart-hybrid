@@ -61,6 +61,8 @@ if [ "$FS_STATUS" == "1" ]; then
 		systemctl enable --now dnsmasq@$i
 	done
 	
+	# call jobs
+	$SCRIPT_FS init_jobs 1
 else 
 	# Log
 	fn_log "$LOG_PROC" "$LOG_LABEL_INFO FlashStart disabled - does not proceed"
