@@ -163,6 +163,16 @@ fn_check_substring() {
 	echo $RESULT
 }
 
+fn_return_flashstart_status() {
+	local GET_STATUS=$($ESMITH_CONFIG getprop flashstart status)
+	
+	if [ "$GET_STATUS" = "enabled" ];then 
+		echo "1";
+	else 
+		echo "0";
+	fi
+}
+
 # API
 #-------------------------
 function fn_call_api() {
