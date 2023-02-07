@@ -6,9 +6,6 @@
 # check call_jobs inlcude defined in fs_hybrid
 if [ "$INIT_SRC_INCLUDE" != "1" ]; then echo "call %SCRIPT_DIR%/%SCRIPT_FS% new_dns"; exit; fi
 
-# get data
-INIT_MODE=$2			# action to be execute [ <empty> / write_only ]
-
 # call API
 CLOUD_DNS=$(fn_call_api "$API_VERSION/device/dns" "$AUTH_EMAIL" "GET" "*")
 
@@ -49,21 +46,7 @@ else
 		fi
 
 	done 
-	
-	
-	# if reload requested
-	if [ "$RELOAD" = "1" -a "$INIT_MODE" != "write_only" ]; then
-		# call event
-		$SIGNAL_EVENT flashstarthybrid-dns-init
 		
-		# log
-		fn_log "$CALL_PROC" "$LOG_LABEL_INFO signal-event flashstarthybrid-dns-init"
-		
-		# call job init 
-		$SCRIPT_FS init_jobs
-		
-	elif [ "$INIT_MODE" = "write_only" ]; then
-		echo $RELOAD
-	fi
-	
+	# return reload var	
+	echo $RELOAD
 fi
