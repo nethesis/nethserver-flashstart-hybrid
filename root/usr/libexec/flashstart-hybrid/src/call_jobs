@@ -107,7 +107,7 @@ else
 			fn_log "$CALL_PROC" "$LOG_LABEL_INFO UPDATE: $ID $VERSION"
 			
 			# call update
-			$SCRIPT_FS software_update "$VERSION"
+			$SCRIPT_FS software_update_check
 			
 		elif [ "$CODE_JOB" = "NEW_DNS" ]; then
 			# call procedure

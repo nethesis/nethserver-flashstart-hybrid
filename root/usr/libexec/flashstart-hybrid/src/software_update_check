@@ -109,11 +109,5 @@ else
 		
 	# Log response
 	fn_log "$CALL_PROC" "$LOG_LABEL_INFO $LABEL_REQUIRED [$RESPONSE_LOG]"
-	
-	# if update required 
-	if [ "$UPDATE_REQUIRED" == "1" ] && [ "$SEND_ONLY_DATA" == "0" ]; then
-		# call update
-		$SCRIPT_FS software_update "$UPDATE_VERSION"
-	fi
-	
+		
 fi
