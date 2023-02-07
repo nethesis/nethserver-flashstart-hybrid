@@ -36,16 +36,7 @@ case "$1" in
       # include script file
       source $PATH_SRC/call_jobs
     ;;
-	
-	admin_execute)
-      #-------------------------------------------------------------
-      # call $(admin_execute) 
-	  # 	Check exists admin command
-      #-------------------------------------------------------------	  
-      # include script file
-      source $PATH_SRC/admin_execute
-    ;;
-	
+		
 	match_clients)
       #-------------------------------------------------------------
       # call $(match_clients) 
