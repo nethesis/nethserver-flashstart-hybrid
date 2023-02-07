@@ -28,15 +28,6 @@ fn_log_procedure_init "$CALL_PROC"
 
 # call
 case "$1" in
-	init)
-      #-------------------------------------------------------------
-      # call $(init) 
-	  # 	Initializes the named files and loopback interfaces
-      #-------------------------------------------------------------	  
-      # include script file
-      source $PATH_SRC/init
-    ;;
-	
 	call_jobs)
       #-------------------------------------------------------------
       # call $(call_jobs) 

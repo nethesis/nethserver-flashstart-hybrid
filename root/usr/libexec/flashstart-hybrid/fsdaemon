@@ -13,14 +13,9 @@ if [ ! -d "$PROCEDURE_LOG_DIR" ]; then
 fi
 
 
-# check loopback interface
-CHECK_LO=$($IFCONFIG -s | grep "lo:" | wc -l)
-if [ "$CHECK_LO" == 0 ]; then
-	# call init
-	$SCRIPT_FS init	
-else
+if [ "$AUTH_EMAIL" != "" ]; then 
 	# call init jobs only with file reset
-	$SCRIPT_FS init_jobs 1	
+	$SCRIPT_FS init_jobs 1
 fi
 
 # send version to FlashStart
