@@ -37,7 +37,7 @@ done
 # proceed only if enabled
 if [ "$FS_STATUS" == "1" ]; then 
 	# download new dns configuration
-	$SCRIPT_FS configure_catch_all 0
+	$SCRIPT_FS new_dns
 
 	# get rule list from perl module
 	for line in $($PERL -e 'use FlashStartHybrid::IpsetDNS; my @l = FlashStartHybrid::IpsetDNS->return_row(); foreach my $e (@l) { print "$e->{profile};$e->{loID};$e->{loIP}\n"; }') ; do 
