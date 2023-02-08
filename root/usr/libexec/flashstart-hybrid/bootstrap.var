@@ -26,7 +26,7 @@ SERVICE_FS=flashstart-hybrid
 
 # set path service log file
 SERVICE_LOG_FILE=$PATH_LOG$NAME_FILE_LOG
-PROCEDURE_LOG_DIR=$PATH_LOG"flashstart-hybrid-proc/"
+PROCEDURE_LOG_DIR="/var/spool/flashstart-hybrid/"
 
 # set profile confs file
 IPSET_DNS_FILE=$SYS_CONFS_DIR"/ipset_dns.conf"
