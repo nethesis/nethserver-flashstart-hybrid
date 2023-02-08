@@ -6,6 +6,9 @@ source /usr/libexec/flashstart-hybrid/bootstrap.var
 # include function by function
 fn_include_func_file dns_utility
 
+# get flastart status
+FS_STATUS=$(fn_return_flashstart_status)
+
 # set log procedure
 LOG_PROC="ACTION flashstarthybrid-init"
 
@@ -31,24 +34,36 @@ for setname in $($IPSET list -name | grep $SETNAME_LABEL) ; do
 	fn_log "$LOG_PROC" "$LOG_LABEL_INFO ipset destroy $setname [$RESULT_IPSET]"
 done
 
-# get rule list from perl module
-for line in $($PERL -e 'use FlashStartHybrid::IpsetDNS; my @l = FlashStartHybrid::IpsetDNS->return_row(); foreach my $e (@l) { print "$e->{profile};$e->{loID};$e->{loIP}\n"; }') ; do 
-	
-	SETNAME=$(echo "$line" | cut -d ';' -f 1)
-	LOOPBACK_ID=$(echo "$line" | cut -d ';' -f 2)
-	LOOPBACK_IP=$(echo "$line" | cut -d ';' -f 3)
+# proceed only if enabled
+if [ "$FS_STATUS" == "1" ]; then 
+	# download new dns configuration
+	$SCRIPT_FS new_dns
 
-	# add setname to ipset  
-	RESULT_IPSET=$($IPSET -N $SETNAME iphash 2>&1 >/dev/null)
-	if [ "$RESULT_IPSET" = "" ]; then RESULT_IPSET="executed"; fi
+	# get rule list from perl module
+	for line in $($PERL -e 'use FlashStartHybrid::IpsetDNS; my @l = FlashStartHybrid::IpsetDNS->return_row(); foreach my $e (@l) { print "$e->{profile};$e->{loID};$e->{loIP}\n"; }') ; do 
+		
+		SETNAME=$(echo "$line" | cut -d ';' -f 1)
+		LOOPBACK_ID=$(echo "$line" | cut -d ';' -f 2)
+		LOOPBACK_IP=$(echo "$line" | cut -d ';' -f 3)
+
+		# add setname to ipset  
+		RESULT_IPSET=$($IPSET -N $SETNAME iphash 2>&1 >/dev/null)
+		if [ "$RESULT_IPSET" = "" ]; then RESULT_IPSET="executed"; fi
+		
+		# Log
+		fn_log "$LOG_PROC" "$LOG_LABEL_INFO ipset $SETNAME [$RESULT_IPSET]"
+		
+	done
+
+	systemctl enable --now flashstart-hybrid
+	for i in {0..4}
+	do
+		systemctl enable --now dnsmasq@$i
+	done
 	
+	# call jobs
+	$SCRIPT_FS init_jobs 1
+else 
 	# Log
-	fn_log "$LOG_PROC" "$LOG_LABEL_INFO ipset $SETNAME [$RESULT_IPSET]"
-	
-done
-
-systemctl enable --now flashstart-hybrid
-for i in {0..4}
-do
-    systemctl enable --now dnsmasq@$i
-done
+	fn_log "$LOG_PROC" "$LOG_LABEL_INFO FlashStart disabled - does not proceed"
+fi

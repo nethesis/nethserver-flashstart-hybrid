@@ -28,15 +28,6 @@ fn_log_procedure_init "$CALL_PROC"
 
 # call
 case "$1" in
-	init)
-      #-------------------------------------------------------------
-      # call $(init) 
-	  # 	Initializes the named files and loopback interfaces
-      #-------------------------------------------------------------	  
-      # include script file
-      source $PATH_SRC/init
-    ;;
-	
 	call_jobs)
       #-------------------------------------------------------------
       # call $(call_jobs) 
@@ -45,16 +36,7 @@ case "$1" in
       # include script file
       source $PATH_SRC/call_jobs
     ;;
-	
-	admin_execute)
-      #-------------------------------------------------------------
-      # call $(admin_execute) 
-	  # 	Check exists admin command
-      #-------------------------------------------------------------	  
-      # include script file
-      source $PATH_SRC/admin_execute
-    ;;
-	
+		
 	match_clients)
       #-------------------------------------------------------------
       # call $(match_clients) 
@@ -144,16 +126,7 @@ case "$1" in
       # include script file
       source $PATH_SRC/software_update_check
     ;;
-	
-	software_update)
-      #-------------------------------------------------------------
-      # call $(software_update) 
-	  # 	Execute update
-      #-------------------------------------------------------------	  
-      # include script file
-      source $PATH_SRC/software_update
-    ;;
-	
+		
 	system_check)
       #-------------------------------------------------------------
       # call $(system_check) 

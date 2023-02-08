@@ -18,7 +18,7 @@ if [ "$CHECK_RELOAD" = "1" ]; then
 	fn_log "$CALL_PROC" "$LOG_LABEL_INFO reload rules"
 
 	# call reload firewall rule
-	$SIGNAL_EVENT flashstarthybrid-configure-catch-all
+	$SIGNAL_EVENT nethserver-flashstart-hybrid-save
 fi
 
 
