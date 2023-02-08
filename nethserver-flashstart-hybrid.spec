@@ -53,6 +53,7 @@ cp -a api/* %{buildroot}/usr/libexec/nethserver/api/%{name}/
 chmod +x %{buildroot}/usr/libexec/nethserver/api/%{name}/*
 
 mkdir -p %{buildroot}/var/log/flashstart-hybrid-proc/
+mkdir -p %{buildroot}/var/log/flashstart-hybrid/
 
 %{genfilelist} %{buildroot} > %{name}-%{version}-filelist
 
@@ -61,6 +62,7 @@ mkdir -p %{buildroot}/var/log/flashstart-hybrid-proc/
 %dir %{_nseventsdir}/%{name}-update
 %dir %{_nsdbconfdir}/flashstart
 %dir /var/log/flashstart-hybrid-proc
+%dir /var/log/flashstart-hybrid
 %config(noreplace) /etc/flashstart-hybrid/*
 %doc COPYING
 
