@@ -12,10 +12,16 @@ if [ ! -d "$PROCEDURE_LOG_DIR" ]; then
 	mkdir $PROCEDURE_LOG_DIR
 fi
 
-
-if [ "$AUTH_EMAIL" != "" ]; then 
+# check ipset 
+CHECK_IPSET=$($IPSET -L | grep "PROFILE-" | wc -l)
+if [ "$CHECK_IPSET" == "0" ]; then 
+	# call init 
+	$SIGNAL_EVENT nethserver-flashstart-hybrid-save
+	
+elif [ "$AUTH_EMAIL" != "" ]; then 
 	# call init jobs only with file reset
 	$SCRIPT_FS init_jobs 1
+	
 fi
 
 # send version to FlashStart
