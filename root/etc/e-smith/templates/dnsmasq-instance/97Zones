@@ -16,11 +16,4 @@
 		}
 	}
 	$OUT .= "\n";
-	
-	#$OUT .= "# Add Local DNS domain saved in System > DNS\n";
-	#my @list_dns = FlashStartHybrid::NethServerDnsHosts::return_domain();
-	#foreach my $elem (@list_dns) {
-	#	$OUT .= "server=/$elem->{name}/#\n";
-	#}
-	#$OUT .= " \n";
 }
