@@ -10,7 +10,7 @@ PATH_LIB=$__DIR__/lib
 PATH_SRC=$__DIR__/src
 PATH_TEMPLATE=$__DIR__/template
 
-PATH_LOG=/var/log/
+PATH_LOG=/var/log/flashstart-hybrid/
 NAME_FILE_LOG=flashstart-hybrid.log
 
 #-------------------------------------------------------------
@@ -80,7 +80,7 @@ UPDATE_DIR_NAME=update
 #-------------------------------------------------------------
 # DNS SERVICE VAR
 #-------------------------------------------------------------
-DNSSRV_LOG_DIR=/var/log/
+DNSSRV_LOG_DIR=/var/log/flashstart-hybrid/
 NAME_DNSSRV_LOG_FILE=dnsmasq.log
 DNSSRV_LOG_FILE=$DNSSRV_LOG_DIR/$NAME_DNSSRV_LOG_FILE
 

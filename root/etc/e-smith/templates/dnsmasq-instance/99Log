@@ -2,6 +2,6 @@
 # 99Log
 #
 
-log-facility=/var/log/dnsmasq.log
+log-facility=/var/log/flashstart-hybrid/dnsmasq.log
 log-queries
 
