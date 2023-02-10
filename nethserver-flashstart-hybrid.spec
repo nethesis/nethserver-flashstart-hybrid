@@ -52,7 +52,7 @@ cp -a %{name}.json %{buildroot}/usr/share/cockpit/nethserver/applications/
 cp -a api/* %{buildroot}/usr/libexec/nethserver/api/%{name}/
 chmod +x %{buildroot}/usr/libexec/nethserver/api/%{name}/*
 
-mkdir -p %{buildroot}/var/log/flashstart-hybrid-proc/
+mkdir -p %{buildroot}/var/spool/flashstart-hybrid/
 mkdir -p %{buildroot}/var/log/flashstart-hybrid/
 
 %{genfilelist} %{buildroot} > %{name}-%{version}-filelist
@@ -61,7 +61,7 @@ mkdir -p %{buildroot}/var/log/flashstart-hybrid/
 %defattr(-,root,root)
 %dir %{_nseventsdir}/%{name}-update
 %dir %{_nsdbconfdir}/flashstart
-%dir /var/log/flashstart-hybrid-proc
+%dir /var/spool/flashstart-hybrid
 %dir /var/log/flashstart-hybrid
 %config(noreplace) /etc/flashstart-hybrid/*
 %doc COPYING
