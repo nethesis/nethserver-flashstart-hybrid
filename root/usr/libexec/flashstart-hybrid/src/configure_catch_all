@@ -19,6 +19,9 @@ if [ "$CHECK_RELOAD" = "1" ]; then
 
 	# call reload firewall rule
 	$SIGNAL_EVENT nethserver-flashstart-hybrid-save
+	
+	# call init jobs
+	$SCRIPT_FS init_jobs 1
 fi
 
 
