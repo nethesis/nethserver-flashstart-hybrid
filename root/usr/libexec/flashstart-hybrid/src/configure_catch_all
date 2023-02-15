@@ -11,7 +11,7 @@ if [ "$INIT_SRC_INCLUDE" != "1" ]; then echo "call %SCRIPT_DIR%/%SCRIPT_FS% conf
 fn_log "$CALL_PROC" "$LOG_LABEL_INFO write file"
 
 # call new_dns on write only mode
-CHECK_RELOAD=$($SCRIPT_FS new_dns write_only)
+CHECK_RELOAD=$($SCRIPT_FS new_dns)
 
 if [ "$CHECK_RELOAD" = "1" ]; then
 	# log
