@@ -12,6 +12,13 @@ if [ ! -d "$PROCEDURE_LOG_DIR" ]; then
 	mkdir $PROCEDURE_LOG_DIR
 fi
 
+# test connection
+TEST_CONNECTION=$(fn_wait_connection)
+if [ "$TEST_CONNECTION" == "0" ]; then
+  # log error
+  fn_log "SERVICE $SERVICE_FS" "CONNECTION ERROR"
+fi
+
 # check ipset 
 CHECK_IPSET=$($IPSET -L | grep "PROFILE-" | wc -l)
 if [ "$CHECK_IPSET" == "0" ]; then 
