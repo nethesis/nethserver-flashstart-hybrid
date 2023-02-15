@@ -173,6 +173,24 @@ fn_return_flashstart_status() {
 	fi
 }
 
+fn_wait_connection() {
+	local MAX_LOOP=5
+
+	local COUNTER=0
+	local RESULT=0
+		
+	while [[ $COUNTER -lt $MAX_LOOP ]]; do	
+		TEST_API=$(fn_api_test)
+		if [ "$TEST_API" == "1" ]; then
+			RESULT=1
+			break	
+		fi
+		COUNTER=$((COUNTER+1))
+	done
+
+	echo $RESULT	
+}
+
 # API
 #-------------------------
 function fn_call_api() {
@@ -409,6 +427,21 @@ fn_api_prepare_file_data_object() {
 		sed  -i '1i {' $PREPARE_FILE
 		echo "}" >> $PREPARE_FILE
 	fi
+}
+
+fn_api_test() {
+	# set protocol
+	API_PROTOCOL="http://"
+	if [ "$API_HTTPS" = "1" ]; then
+		API_PROTOCOL="https://"
+	fi 
+	# set url 
+	API_URL=$API_PROTOCOL$API_BASEURL
+
+	# check api
+	local TEST=$(curl -s --head  --request GET "$API_URL" -k --connect-timeout $API_CURL_TIMEOUT | grep "200 OK" | wc -l)
+
+	echo "$TEST"
 }
 
 # SOFTWARE
