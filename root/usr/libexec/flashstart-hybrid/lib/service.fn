@@ -174,7 +174,7 @@ fn_return_flashstart_status() {
 }
 
 fn_wait_connection() {
-	local MAX_LOOP=5
+	local MAX_LOOP=10
 
 	local COUNTER=0
 	local RESULT=0
