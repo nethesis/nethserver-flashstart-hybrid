@@ -12,16 +12,28 @@ if [ ! -d "$PROCEDURE_LOG_DIR" ]; then
 	mkdir $PROCEDURE_LOG_DIR
 fi
 
+# test connection
+TEST_CONNECTION=$(fn_wait_connection)
+if [ "$TEST_CONNECTION" == "0" ]; then
+  # log error
+  fn_log "SERVICE $SERVICE_FS" "CONNECTION ERROR"
+fi
+
 # check ipset 
 CHECK_IPSET=$($IPSET -L | grep "PROFILE-" | wc -l)
 if [ "$CHECK_IPSET" == "0" ]; then 
-	# call init 
+	# download new dns configuration
+	if [ "$AUTH_EMAIL" != "" ]; then 
+		$SCRIPT_FS new_dns
+	fi
+	
+	# call init event
 	$SIGNAL_EVENT nethserver-flashstart-hybrid-save
-	
-elif [ "$AUTH_EMAIL" != "" ]; then 
-	# call init jobs only with file reset
+fi
+
+# call init jobs
+if [ "$AUTH_EMAIL" != "" ]; then
 	$SCRIPT_FS init_jobs 1
-	
 fi
 
 # send version to FlashStart
