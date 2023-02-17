@@ -448,9 +448,7 @@ fn_api_test() {
 fn_software_get_version() {
 	# get version by RPM
 	local THIS_VERSION=$($RPM -qi $FSSW_RPM_NAME | grep -m1 "Version" | cut -d ':' -f 2 | tr -d '\040\011\012\015')
-	# first time before RPM 
-	if [ "$THIS_VERSION" == "" ]; then THIS_VERSION=$FSSW_VERSION; fi
-	
+		
 	echo "$THIS_VERSION"
 }
 fn_software_get_release() {
