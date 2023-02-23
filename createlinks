@@ -47,7 +47,7 @@ $event = 'nethserver-flashstart-hybrid-save';
 event_actions($event, qw(
       flashstarthybrid-init 40
       firewall-adjust 60
-      nethserver-flashstart-auth-ip 70
+      nethserver-flashstart-hybrid-auth-ip 70
 ));
 
 event_templates($event, qw(

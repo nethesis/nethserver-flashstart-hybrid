@@ -69,7 +69,7 @@ ESMITH_CONFIG=/sbin/e-smith/config
 
 ESMITH_ACTIONS=/etc/e-smith/events/actions
 
-ESMITH_ACTIONS_FS_AUTH=/etc/e-smith/events/actions/nethserver-flashstart-auth-ip
+ESMITH_ACTIONS_FS_AUTH=/etc/e-smith/events/actions/nethserver-flashstart-hybrid-auth-ip
 
 #-------------------------------------------------------------
 # UPDATE VAR
