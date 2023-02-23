@@ -83,7 +83,7 @@ fn_clear_log() {
 # use this for chanck and include function file
 
 	# reset log file
-    echo > $DNSSRV_LOG_FILE
+    local RESET=$(echo "" > $DNSSRV_LOG_FILE)
 	
 
 }
