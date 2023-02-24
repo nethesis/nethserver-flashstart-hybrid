@@ -95,7 +95,6 @@ $event = 'flashstarthybrid-zone-update';
 
 event_actions($event, qw(
       flashstarthybrid-restart-dnsmasq 30
-      flashstarthybrid-expand-dnsmasq 40
 ));
 
 #
