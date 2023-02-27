@@ -6,7 +6,6 @@
 # check call_jobs inlcude defined in fs_hybrid
 if [ "$INIT_SRC_INCLUDE" != "1" ]; then echo "call %SCRIPT_DIR%/%SCRIPT_FS% clear_sessions"; exit; fi
 
-exit;
 # check auth data
 if [ "$AUTH_EMAIL" == "" ]; then fn_log "$CALL_PROC" "Service Not Configured"; exit; fi
 
