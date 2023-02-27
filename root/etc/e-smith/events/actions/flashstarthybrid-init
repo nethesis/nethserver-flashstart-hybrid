@@ -53,11 +53,14 @@ if [ "$FS_STATUS" == "1" ]; then
 		
 	done
 
-	systemctl enable --now flashstart-hybrid
+	systemctl enable flashstart-hybrid
 	for i in {0..4}
 	do
 		systemctl enable --now dnsmasq@$i
 	done
+	
+	# restart the service to initialize the ipset 
+	systemctl restart flashstart-hybrid
 	
 else 
 	# Log
