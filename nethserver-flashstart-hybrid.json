@@ -1,8 +1,8 @@
 {
   "id": "nethserver-flashstart-hybrid",
-  "name": "FlashStart Hybrid",
-  "summary": "Cloud Content Filter",
-  "description": "Cloud Content Filter",
+  "name": "FlashStart Pro Plus",
+  "summary": "Cloud Content Filter based on FlashStart Pro Plus",
+  "description": "Cloud Content Filter based on FlashStart Pro Plus",
   "url": "",
   "homepage": "https://github.com/nethesis/nethserver-flashstart-hybrid",
   "provides": ["nethserver-flashstart-hybrid"],
