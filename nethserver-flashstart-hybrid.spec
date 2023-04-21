@@ -1,6 +1,6 @@
 Summary: NethServer FlashStart integration
 Name: nethserver-flashstart-hybrid
-Version: 0.0.0
+Version: 1.0.0
 Release: 1%{?dist}
 License: GPL
 URL: %{url_prefix}/%{name}
@@ -76,3 +76,6 @@ mkdir -p %{buildroot}/var/log/flashstart-hybrid/
 %systemd_postun flashstart-hybrid.service
 
 %changelog
+* Fri Apr 21 2023 Giacomo Sanchietti <giacomo.sanchietti@nethesis.it> - 1.0.0-1
+- First public release
+
