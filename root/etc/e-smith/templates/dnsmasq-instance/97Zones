@@ -12,7 +12,7 @@
 	foreach my $elem (@list_zone) { 	
 		$OUT .= "address=/$elem->{zone}/$elem->{ip_array}[0]\n";
 		if (length $elem->{ip_array}[1]) { 
-			$OUT .= "address=/$elem->{zone}/$elem->{ip_array}[1]\n";
+			$OUT .= "server=/$elem->{zone}/$elem->{ip_array}[1]\n";
 		}
 	}
 	$OUT .= "\n";
