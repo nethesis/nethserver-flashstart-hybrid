@@ -10,7 +10,7 @@
 	$OUT .= "# Add zone\n";
 	my @list_zone = FlashStartHybrid::ServiceDNS::return_zone_list();
 	foreach my $elem (@list_zone) { 	
-		$OUT .= "address=/$elem->{zone}/$elem->{ip_array}[0]\n";
+		$OUT .= "server=/$elem->{zone}/$elem->{ip_array}[0]\n";
 		if (length $elem->{ip_array}[1]) { 
 			$OUT .= "server=/$elem->{zone}/$elem->{ip_array}[1]\n";
 		}
