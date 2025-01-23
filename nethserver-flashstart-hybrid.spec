@@ -1,6 +1,6 @@
 Summary: NethServer FlashStart integration
 Name: nethserver-flashstart-hybrid
-Version: 1.0.1
+Version: 1.0.2
 Release: 1%{?dist}
 License: GPL
 URL: %{url_prefix}/%{name}
@@ -76,6 +76,10 @@ mkdir -p %{buildroot}/var/log/flashstart-hybrid/
 %systemd_postun flashstart-hybrid.service
 
 %changelog
+* Thu Jan 23 2025 Giacomo Sanchietti <giacomo.sanchietti@nethesis.it> - 1.0.2-1
+- Add tcp redirect (#11)
+￼
+
 * Mon Jan 29 2024 Giacomo Sanchietti <giacomo.sanchietti@nethesis.it> - 1.0.1-1
 - Flashstart Pro Plus local zone redirect issue - Bug Nethesis/dev#6225
 
