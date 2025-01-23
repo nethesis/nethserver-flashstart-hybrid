@@ -56,12 +56,14 @@
                     # set rule for this setname
                     $OUT .= "?COMMENT FlashStart Rules on $elem->{profile} for port 53 \n";
                     $OUT .= "REDIRECT\t$zone:+$elem->{profile}$bypass_src_str\t$elem->{service_port}\tudp\t$dnsMasqPort\n";
+                    $OUT .= "REDIRECT\t$zone:+$elem->{profile}$bypass_src_str\t$elem->{service_port}\ttcp\t$dnsMasqPort\n";
                     $OUT .= "?COMMENT\n";
                 }
             }
             # For all [ catch-all profile ]
             $OUT .= "?COMMENT FlashStart Rules [catch-all] for port 53\n";
             $OUT .= "REDIRECT\t$zone$bypass_src_str_all\t$catch_all_port\tudp\t$dnsMasqPort\n";
+            $OUT .= "REDIRECT\t$zone$bypass_src_str_all\t$catch_all_port\ttcp\t$dnsMasqPort\n";
             $OUT .= "?COMMENT\n";
         }
     }
